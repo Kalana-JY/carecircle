@@ -14,6 +14,13 @@ const userSchema = new mongoose.Schema({
     lowercase: true,
     match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address'],
   },
+  phoneNumber: {
+    type: String,
+    required: [true, 'Phone number is required'],
+    unique: true,
+    trim: true,
+    match: [/^\+[1-9]\d{1,14}$/, 'Please use a valid phone number in E.164 format (e.g. +94771234567)'],
+  },
   password: {
     type: String,
     required: [true, 'Password is required'],
