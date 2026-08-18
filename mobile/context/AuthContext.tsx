@@ -6,6 +6,7 @@ export interface UserSession {
   _id: string;
   name: string;
   email: string;
+  phoneNumber: string;
   token: string;
 }
 
@@ -13,7 +14,7 @@ interface AuthContextType {
   user: UserSession | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (name: string, email: string, password: string) => Promise<void>;
+  signUp: (name: string, email: string, phoneNumber: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -69,14 +70,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const signUp = async (name: string, email: string, password: string) => {
+  const signUp = async (name: string, email: string, phoneNumber: string, password: string) => {
     try {
       const response = await fetch(`${API_URL}/api/auth/signup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, phoneNumber, password }),
       });
 
       const data = await response.json();
