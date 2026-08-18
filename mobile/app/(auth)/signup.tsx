@@ -10,6 +10,8 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +19,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Logo } from '../../components/Logo';
 import { Fonts, Colors } from '../../constants/theme';
+
+const COUNTRY_CODES = [
+  { code: 'LK', dialCode: '+94', name: 'Sri Lanka', flag: '🇱🇰' },
+  { code: 'US', dialCode: '+1', name: 'United States', flag: '🇺🇸' },
+  { code: 'CA', dialCode: '+1', name: 'Canada', flag: '🇨🇦' },
+  { code: 'GB', dialCode: '+44', name: 'United Kingdom', flag: '🇬🇧' },
+  { code: 'AU', dialCode: '+61', name: 'Australia', flag: '🇦🇺' },
+  { code: 'IN', dialCode: '+91', name: 'India', flag: '🇮🇳' },
+  { code: 'NZ', dialCode: '+64', name: 'New Zealand', flag: '🇳🇿' },
+  { code: 'SG', dialCode: '+65', name: 'Singapore', flag: '🇸🇬' },
+  { code: 'ZA', dialCode: '+27', name: 'South Africa', flag: '🇿🇦' },
+  { code: 'DE', dialCode: '+49', name: 'Germany', flag: '🇩🇪' },
+  { code: 'FR', dialCode: '+33', name: 'France', flag: '🇫🇷' },
+  { code: 'JP', dialCode: '+81', name: 'Japan', flag: '🇯🇵' },
+];
 
 export default function SignupScreen() {
   const router = useRouter();
@@ -26,15 +43,36 @@ export default function SignupScreen() {
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]); // Default Sri Lanka (+94)
+  const [isCountryModalOpen, setIsCountryModalOpen] = useState(false);
+  const [countrySearchQuery, setCountrySearchQuery] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [focusedInput, setFocusedInput] = useState<'name' | 'email' | 'password' | null>(null);
+  const [focusedInput, setFocusedInput] = useState<'name' | 'email' | 'phone' | 'password' | null>(null);
+
+  const filteredCountries = COUNTRY_CODES.filter(
+    (country) =>
+      country.name.toLowerCase().includes(countrySearchQuery.toLowerCase()) ||
+      country.dialCode.includes(countrySearchQuery)
+  );
 
   const handleSignup = async () => {
-    if (!name.trim() || !email.trim() || !password) {
+    if (!name.trim() || !email.trim() || !phoneNumber.trim() || !password) {
       setError('Please fill in all fields');
+      return;
+    }
+
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    if (!cleanPhone) {
+      setError('Phone number is required');
+      return;
+    }
+
+    if (cleanPhone.length < 7 || cleanPhone.length > 15) {
+      setError('Please enter a valid phone number (7-15 digits)');
       return;
     }
 
@@ -51,8 +89,10 @@ export default function SignupScreen() {
     setError(null);
     setIsSubmitting(true);
 
+    const fullPhoneNumber = `${selectedCountry.dialCode}${cleanPhone}`;
+
     try {
-      await signUp(name.trim(), email.trim(), password);
+      await signUp(name.trim(), email.trim(), fullPhoneNumber, password);
       // AuthProvider triggers routing change automatically
     } catch (err: any) {
       setError(err.message || 'Failed to create account. Please try again.');
@@ -166,6 +206,49 @@ export default function SignupScreen() {
               </View>
             </View>
 
+            {/* Phone Number Input */}
+            <View style={styles.inputGroup}>
+              <Text style={[styles.label, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Phone Number</Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: colors.inputBg,
+                    borderColor: focusedInput === 'phone' ? colors.primary : colors.border,
+                    borderWidth: focusedInput === 'phone' ? 2 : 1,
+                  },
+                ]}
+              >
+                <TouchableOpacity
+                  style={styles.countrySelector}
+                  onPress={() => setIsCountryModalOpen(true)}
+                  activeOpacity={0.7}
+                  disabled={isSubmitting}
+                >
+                  <Text style={styles.flagText}>{selectedCountry.flag}</Text>
+                  <Text style={[styles.dialCodeText, { color: colors.text }]}>{selectedCountry.dialCode}</Text>
+                  <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                </TouchableOpacity>
+                <View style={[styles.divider, { backgroundColor: colors.border }]} />
+                <TextInput
+                  style={[styles.input, { color: colors.text }]}
+                  placeholder="77 123 4567"
+                  placeholderTextColor={colors.textSecondary}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  value={phoneNumber}
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                    if (error) setError(null);
+                  }}
+                  onFocus={() => setFocusedInput('phone')}
+                  onBlur={() => setFocusedInput(null)}
+                  editable={!isSubmitting}
+                />
+              </View>
+            </View>
+
             {/* Password Input */}
             <View style={styles.inputGroup}>
               <Text style={[styles.label, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Password</Text>
@@ -257,6 +340,73 @@ export default function SignupScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Country Code Picker Modal */}
+      <Modal
+        visible={isCountryModalOpen}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setIsCountryModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+                Select Country
+              </Text>
+              <TouchableOpacity onPress={() => setIsCountryModalOpen(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Search Input */}
+            <View style={[styles.modalSearchWrapper, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+              <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={{ marginRight: 8 }} />
+              <TextInput
+                style={[styles.modalSearchInput, { color: colors.text }]}
+                placeholder="Search country or code..."
+                placeholderTextColor={colors.textSecondary}
+                value={countrySearchQuery}
+                onChangeText={setCountrySearchQuery}
+                autoCorrect={false}
+              />
+              {countrySearchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setCountrySearchQuery('')}>
+                  <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Country List */}
+            <FlatList
+              data={filteredCountries}
+              keyExtractor={(item) => item.code}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={[
+                    styles.countryItem,
+                    { borderBottomColor: colors.border },
+                    selectedCountry.code === item.code && { backgroundColor: colors.inputBg }
+                  ]}
+                  onPress={() => {
+                    setSelectedCountry(item);
+                    setIsCountryModalOpen(false);
+                    setCountrySearchQuery('');
+                  }}
+                >
+                  <Text style={styles.modalFlag}>{item.flag}</Text>
+                  <Text style={[styles.modalCountryName, { color: colors.text }]}>{item.name}</Text>
+                  <Text style={[styles.modalDialCode, { color: colors.textSecondary }]}>{item.dialCode}</Text>
+                  {selectedCountry.code === item.code && (
+                    <Ionicons name="checkmark" size={18} color={colors.primary} style={{ marginLeft: 'auto' }} />
+                  )}
+                </TouchableOpacity>
+              )}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -355,6 +505,26 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: 16, // body-md (prevents auto-zoom on iOS inputs)
   },
+  countrySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 8,
+    gap: 4,
+    height: '100%',
+  },
+  flagText: {
+    fontSize: 20,
+  },
+  dialCodeText: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginHorizontal: 2,
+  },
+  divider: {
+    width: 1,
+    height: '60%',
+    marginRight: 12,
+  },
   checkboxContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -403,5 +573,64 @@ const styles = StyleSheet.create({
   footerLink: {
     fontSize: 14,
     fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
+    height: '60%',
+    borderWidth: 1,
+    borderBottomWidth: 0,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+  },
+  modalSearchWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 8,
+    height: 40,
+    paddingHorizontal: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+  },
+  modalSearchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 15,
+  },
+  countryItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+  },
+  modalFlag: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  modalCountryName: {
+    fontSize: 16,
+    flex: 1,
+  },
+  modalDialCode: {
+    fontSize: 16,
+    marginRight: 8,
   },
 });
