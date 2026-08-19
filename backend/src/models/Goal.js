@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 
+// Define the Goal schema
 const goalSchema = new mongoose.Schema(
   {
     userId: {

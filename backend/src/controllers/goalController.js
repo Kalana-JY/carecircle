@@ -3,7 +3,7 @@ const { validationResult } = require('express-validator');
 
 // @desc    Create a new goal
 // @route   POST /api/goals
-// @access  Private
+// @access  Privat
 exports.createGoal = async (req, res) => {
   try {
     const errors = validationResult(req);
