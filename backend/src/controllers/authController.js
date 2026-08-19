@@ -14,11 +14,17 @@ const generateToken = (id) => {
 // @access  Public
 const signup = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, phoneNumber, password } = req.body;
 
     // Validate inputs
-    if (!name || !email || !password) {
-      return res.status(400).json({ message: 'Please provide all required fields (name, email, password)' });
+    if (!name || !email || !phoneNumber || !password) {
+      return res.status(400).json({ message: 'Please provide all required fields (name, email, phoneNumber, password)' });
+    }
+
+    // Validate phoneNumber format
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phoneNumber.trim())) {
+      return res.status(400).json({ message: 'Please provide a valid phone number in E.164 format (e.g. +94771234567)' });
     }
 
     if (password.length < 6) {
@@ -28,10 +34,19 @@ const signup = async (req, res) => {
     // Normalize email
     const emailNormalized = email.trim().toLowerCase();
 
-    // Check if user exists
-    const userExists = await User.findOne({ email: emailNormalized });
+    // Check if user exists (by email or phone number)
+    const userExists = await User.findOne({
+      $or: [
+        { email: emailNormalized },
+        { phoneNumber: phoneNumber.trim() }
+      ]
+    });
     if (userExists) {
-      return res.status(400).json({ message: 'User already exists' });
+      if (userExists.email === emailNormalized) {
+        return res.status(400).json({ message: 'User with this email already exists' });
+      } else {
+        return res.status(400).json({ message: 'User with this phone number already exists' });
+      }
     }
 
     // Hash password
@@ -42,6 +57,7 @@ const signup = async (req, res) => {
     const user = await User.create({
       name: name.trim(),
       email: emailNormalized,
+      phoneNumber: phoneNumber.trim(),
       password: hashedPassword,
     });
 
@@ -50,6 +66,7 @@ const signup = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
+        phoneNumber: user.phoneNumber,
         token: generateToken(user._id),
       });
     } else {
@@ -88,6 +105,7 @@ const signin = async (req, res) => {
       _id: user._id,
       name: user.name,
       email: user.email,
+      phoneNumber: user.phoneNumber,
       token: generateToken(user._id),
     });
   } catch (error) {

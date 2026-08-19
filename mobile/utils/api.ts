@@ -2,18 +2,27 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { tokenStorage } from './storage';
 
+// Set to true if you are testing on a physical phone instead of the emulator
+const IS_PHYSICAL_DEVICE = false;
+
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000 (or current host)
- * - Android Emulator: http://10.0.2.2:5000
- * - iOS Simulator / Physical Device: Expo hostUri IP address (or fallback http://localhost:5000)
+ * - Web: http://localhost:5000
+ * - Android Emulator: http://10.0.2.2:5000 (direct host loopback, bypasses firewall)
+ * - iOS Simulator: http://localhost:5000
+ * - Physical Device: Expo hostUri IP address
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return 'http://localhost:5000';
   }
 
-  // expoConfig?.hostUri is usually like "192.168.1.50:8081"
+  // Prioritize emulator loopback for Android
+  if (Platform.OS === 'android' && !IS_PHYSICAL_DEVICE) {
+    return 'http://10.0.2.2:5000';
+  }
+
+  // Use Metro bundler IP address for physical devices
   const hostUri = Constants.expoConfig?.hostUri;
   if (hostUri) {
     const ip = hostUri.split(':')[0];
@@ -22,7 +31,6 @@ const getBaseUrl = (): string => {
     }
   }
 
-  // Fallback for Android emulator vs iOS simulator
   return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
 };
 
