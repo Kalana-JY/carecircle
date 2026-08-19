@@ -1,6 +1,9 @@
 const Resource = require('../models/MentalHealthResource');
 
+
 // Create a new resourc
+
+
 const createResource = async (req, res) => {
   try {
     const data = req.body;
