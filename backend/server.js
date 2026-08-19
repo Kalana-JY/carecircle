@@ -5,6 +5,7 @@ const connectDB = require("./src/config/db");
 const authRoutes = require("./src/routes/authRoutes");
 const moodRoutes = require("./src/routes/moodRoutes");
 const journalRoutes = require("./src/routes/journalRoutes");
+const forumRoutes = require("./src/routes/forumRoutes");
 const peerSupporterRoutes = require("./src/routes/peerSupporterRoutes");
 const resourceRoutes = require("./src/routes/resourceRoutes");
 
@@ -22,6 +23,7 @@ app.use(express.json());
 app.use("/api/auth", authRoutes);
 app.use("/api/moods", moodRoutes);
 app.use("/api/journals", journalRoutes);
+app.use("/api/forum", forumRoutes);
 app.use("/api/peer-supporters", peerSupporterRoutes);
 app.use("/api/resources", resourceRoutes);
 
