@@ -13,7 +13,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
-import { Fonts, Colors } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function ProfileScreen() {
@@ -99,7 +99,7 @@ export default function ProfileScreen() {
         {/* Peer Supporter Block */}
         <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Peer Supporter Status</Text>
-          
+
           {loading ? (
             <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
           ) : (

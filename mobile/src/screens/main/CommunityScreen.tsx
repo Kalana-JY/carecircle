@@ -14,7 +14,7 @@ import {
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Fonts, Colors } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { apiFetch } from '@/services/api';
 import { FORUM_CATEGORY_NAMES, ForumPostItem } from '@/constants/forum';
 import { timeAgo } from '@/services/format';
@@ -238,7 +238,7 @@ export default function CommunityScreen() {
           <Ionicons name="chatbox-ellipses-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.4 }} />
           <Text style={[styles.emptyTitle, { color: colors.text }]}>Chat rooms are on the way</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Soon you'll be able to connect live with your circles right here.
+            Soon you&apos;ll be able to connect live with your circles right here.
           </Text>
         </View>
       )}

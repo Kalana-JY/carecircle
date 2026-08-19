@@ -45,7 +45,7 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * Authenticated fetch helper that attaches the stored JWT as a Bearer token
  * and handles JSON serialization + error extraction.
  */
-export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<any> {
+export async function apiFetch<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const session = await tokenStorage.getItem('user_session');
   let token: string | null = null;
   if (session) {
@@ -72,5 +72,72 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   if (!response.ok) {
     throw new Error(data.message || 'Request failed');
   }
-  return data;
+  return data as T;
 }
+
+export interface MoodEntry {
+  _id: string;
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JournalEntry {
+  _id: string;
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CollectionResponse<T> = {
+  items: T[];
+  meta: { page: number; limit: number; total: number };
+};
+
+export interface MoodPayload {
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+}
+
+export interface JournalPayload {
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+}
+
+export const moodApi = {
+  list: () => apiFetch<CollectionResponse<MoodEntry>>('/api/moods?limit=100'),
+  create: (entry: MoodPayload) =>
+    apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<MoodPayload>) =>
+    apiFetch<MoodEntry>(`/api/moods/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/moods/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const journalApi = {
+  list: () => apiFetch<CollectionResponse<JournalEntry>>('/api/journals?limit=100'),
+  create: (entry: JournalPayload) =>
+    apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<JournalPayload>) =>
+    apiFetch<JournalEntry>(`/api/journals/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/journals/${id}`, { method: 'DELETE' });
+  },
+};

@@ -9,6 +9,8 @@ import HomeScreen from '../screens/main/HomeScreen';
 import ExploreScreen from '../screens/main/ExploreScreen';
 import CommunityScreen from '../screens/main/CommunityScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
+import MoodsScreen from '../screens/main/moods';
+import JournalsScreen from '../screens/main/journals';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
@@ -84,6 +86,16 @@ export default function MainNavigator() {
         name="MainTabs"
         component={MainTabs}
         options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Moods"
+        component={MoodsScreen}
+        options={{ title: 'Mood Journal' }}
+      />
+      <Stack.Screen
+        name="Journals"
+        component={JournalsScreen}
+        options={{ title: 'Journal' }}
       />
       <Stack.Screen
         name="ForumDetail"

@@ -64,7 +64,7 @@ export default function LoginScreen() {
           <View style={styles.headerContainer}>
             <Logo size="large" layout="vertical" />
             <Text style={[styles.subtitle, { color: colors.textSecondary, fontFamily: Fonts.rounded || 'System' }]}>
-              You're not alone. Welcome back.
+              You&apos;re not alone. Welcome back.
             </Text>
           </View>
 
@@ -192,7 +192,7 @@ export default function LoginScreen() {
           {/* Navigation Footer */}
           <View style={styles.footerContainer}>
             <Text style={[styles.footerText, { color: colors.textSecondary }]}>
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
             </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Signup')} activeOpacity={0.7}>
               <Text style={[styles.footerLink, { color: colors.primary, fontFamily: Fonts.rounded || 'System' }]}>Sign up</Text>

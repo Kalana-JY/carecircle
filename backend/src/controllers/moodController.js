@@ -62,10 +62,16 @@ const getMood = async (req, res) => {
 // Update mood
 const updateMood = async (req, res) => {
   try {
+    const editableFields = ['date', 'mood', 'intensity', 'notes', 'activities', 'tags'];
+    const updates = Object.fromEntries(
+      editableFields
+        .filter((field) => req.body[field] !== undefined)
+        .map((field) => [field, req.body[field]])
+    );
     const entry = await Mood.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id, deletedAt: null },
-      { $set: req.body },
-      { new: true }
+      { $set: updates },
+      { new: true, runValidators: true }
     );
     if (!entry) return res.status(404).json({ message: 'Not found or not authorized' });
     res.json(entry);
