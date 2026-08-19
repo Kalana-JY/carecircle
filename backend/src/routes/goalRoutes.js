@@ -16,7 +16,7 @@ const {
 
 const router = express.Router();
 
-// Apply auth middleware to all routes
+// Apply auth middleware to all route
 router.use(protect);
 
 // Validation middleware
