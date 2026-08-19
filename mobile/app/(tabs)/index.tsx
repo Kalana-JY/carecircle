@@ -11,6 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useAuth } from '../../context/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts } from '../../constants/theme';
@@ -35,6 +36,7 @@ interface ResourceItem {
 
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
+  const router = useRouter();
   const isDark = useColorScheme() === 'dark';
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
 
@@ -92,11 +94,7 @@ export default function HomeScreen() {
 
   const handleMoodSelect = (moodLabel: string) => {
     setSelectedMood(moodLabel);
-    if (Platform.OS === 'web') {
-      window.alert(`Mood Logged: We've saved that you're feeling ${moodLabel} today. You're doing great!`);
-    } else {
-      Alert.alert('Mood Logged', `We've saved that you're feeling ${moodLabel} today. You're doing great!`);
-    }
+    router.push('/moods');
   };
 
   // Get user initials for avatar
@@ -180,7 +178,7 @@ export default function HomeScreen() {
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.brand} style={{ opacity: 0.6 }} />
           </View>
           <Text style={[styles.quoteText, { color: colors.text }]}>
-            "You don't have to control your thoughts. You just have to stop letting them control you."
+            &quot;You don&apos;t have to control your thoughts. You just have to stop letting them control you.&quot;
           </Text>
           <Text style={[styles.quoteAuthor, { color: colors.textSecondary }]}>— Dan Millman</Text>
         </View>
@@ -249,7 +247,7 @@ export default function HomeScreen() {
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Start Activity', `Launching "${resource.title}"...`)}
+              onPress={() => resource.type === 'Journal' ? router.push('/journals') : Alert.alert('Start Activity', `Launching "${resource.title}"...`)}
             >
               <View style={styles.resourceLeft}>
                 <View style={[styles.resourceIconBg, { backgroundColor: colors.brandLight }]}>

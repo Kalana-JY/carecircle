@@ -60,10 +60,16 @@ const getJournal = async (req, res) => {
 // Update journal
 const updateJournal = async (req, res) => {
   try {
+    const editableFields = ['date', 'title', 'body', 'mood', 'tags'];
+    const updates = Object.fromEntries(
+      editableFields
+        .filter((field) => req.body[field] !== undefined)
+        .map((field) => [field, req.body[field]])
+    );
     const entry = await Journal.findOneAndUpdate(
       { _id: req.params.id, userId: req.user._id, deletedAt: null },
-      { $set: req.body },
-      { new: true }
+      { $set: updates },
+      { new: true, runValidators: true }
     );
     if (!entry) return res.status(404).json({ message: 'Not found or not authorized' });
     res.json(entry);

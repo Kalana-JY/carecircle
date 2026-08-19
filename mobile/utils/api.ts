@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { tokenStorage } from './storage';
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
@@ -26,4 +27,88 @@ const getBaseUrl = (): string => {
 };
 
 export const API_URL = getBaseUrl();
-console.log('[API] Base URL configured to:', API_URL);
+
+export interface MoodEntry {
+  _id: string;
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JournalEntry {
+  _id: string;
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+type CollectionResponse<T> = {
+  items: T[];
+  meta: { page: number; limit: number; total: number };
+};
+
+export interface MoodPayload {
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+}
+
+export interface JournalPayload {
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+}
+
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const session = await tokenStorage.getItem('user_session');
+  const token = session ? JSON.parse(session).token : null;
+
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data.message || 'Request failed');
+  }
+
+  if (response.status === 204) return undefined as T;
+  return response.json();
+}
+
+export const moodApi = {
+  list: () => request<CollectionResponse<MoodEntry>>('/api/moods?limit=100'),
+  create: (entry: MoodPayload) =>
+    request<MoodEntry>('/api/moods', { method: 'POST', body: JSON.stringify(entry) }),
+  update: (id: string, entry: Partial<MoodPayload>) =>
+    request<MoodEntry>(`/api/moods/${id}`, { method: 'PATCH', body: JSON.stringify(entry) }),
+  remove: (id: string) => request<void>(`/api/moods/${id}`, { method: 'DELETE' }),
+};
+
+export const journalApi = {
+  list: () => request<CollectionResponse<JournalEntry>>('/api/journals?limit=100'),
+  create: (entry: JournalPayload) =>
+    request<JournalEntry>('/api/journals', { method: 'POST', body: JSON.stringify(entry) }),
+  update: (id: string, entry: Partial<JournalPayload>) =>
+    request<JournalEntry>(`/api/journals/${id}`, { method: 'PATCH', body: JSON.stringify(entry) }),
+  remove: (id: string) => request<void>(`/api/journals/${id}`, { method: 'DELETE' }),
+};
