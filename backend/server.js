@@ -27,6 +27,7 @@ app.use("/api/forum", forumRoutes);
 app.use("/api/peer-supporters", peerSupporterRoutes);
 app.use("/api/resources", resourceRoutes);
 
+
 // Base route for health check
 app.get("/", (req, res) => {
   res.json({ message: "CareCircle API is running" });
