@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   ScrollView,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,9 @@ export default function ProfileScreen() {
     accentRed: '#FF3B30',
   };
 
+  const [bookings, setBookings] = useState<any[]>([]);
+  const [loadingBookings, setLoadingBookings] = useState<boolean>(false);
+
   const fetchApplicationStatus = useCallback(async () => {
     if (!user?.token) return;
     try {
@@ -57,12 +61,87 @@ export default function ProfileScreen() {
     }
   }, [user]);
 
+  const fetchBookings = useCallback(async () => {
+    if (!user?.token) return;
+    try {
+      setLoadingBookings(true);
+      const response = await fetch(`${API_URL}/api/sessions/my-bookings`, {
+        headers: {
+          'Authorization': `Bearer ${user.token}`,
+        },
+      });
+      const data = await response.json();
+      if (response.ok && data.items) {
+        setBookings(data.items);
+      }
+    } catch (error) {
+      console.error('[Profile] Failed to fetch booked sessions:', error);
+    } finally {
+      setLoadingBookings(false);
+    }
+  }, [user]);
+
   // Refresh status whenever the tab comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchApplicationStatus();
-    }, [fetchApplicationStatus])
+      fetchBookings();
+    }, [fetchApplicationStatus, fetchBookings])
   );
+
+  const handleCancelBooking = async (sessionId: string) => {
+    const cancelAction = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/sessions/${sessionId}/cancel`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${user?.token}`,
+          },
+        });
+        const data = await response.json();
+        if (response.ok) {
+          if (Platform.OS === 'web') {
+            window.alert('Booking cancelled successfully.');
+          } else {
+            Alert.alert('Success', 'Booking cancelled successfully.');
+          }
+          fetchBookings();
+        } else {
+          if (Platform.OS === 'web') {
+            window.alert(data.message || 'Failed to cancel booking.');
+          } else {
+            Alert.alert('Error', data.message || 'Failed to cancel booking.');
+          }
+        }
+      } catch (err) {
+        console.error('[Profile] Cancel error:', err);
+        if (Platform.OS === 'web') {
+          window.alert('Server error. Please try again later.');
+        } else {
+          Alert.alert('Error', 'Server error. Please try again later.');
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if (window.confirm('Are you sure you want to cancel this support session booking?')) {
+        cancelAction();
+      }
+    } else {
+      Alert.alert(
+        'Cancel Booking',
+        'Are you sure you want to cancel this support session booking?',
+        [
+          { text: 'No', style: 'cancel' },
+          {
+            text: 'Yes, Cancel',
+            style: 'destructive',
+            onPress: cancelAction,
+          },
+        ]
+      );
+    }
+  };
 
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -132,14 +211,23 @@ export default function ProfileScreen() {
               )}
 
               {appStatus === 'approved' && (
-                <View style={[styles.statusBox, { backgroundColor: colors.accentGreen + '1A', borderColor: colors.accentGreen }]}>
-                  <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentGreen} />
-                  <View style={styles.statusTextContainer}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>Approved Supporter</Text>
-                    <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                      Congratulations! You are certified to host support sessions.
-                    </Text>
+                <View>
+                  <View style={[styles.statusBox, { backgroundColor: colors.accentGreen + '1A', borderColor: colors.accentGreen }]}>
+                    <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentGreen} />
+                    <View style={styles.statusTextContainer}>
+                      <Text style={[styles.statusTitle, { color: colors.text }]}>Approved Supporter</Text>
+                      <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
+                        Congratulations! You are certified to host support sessions.
+                      </Text>
+                    </View>
                   </View>
+                  <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
+                    onPress={() => navigation.navigate('ManageSchedule')}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.actionBtnText}>Host & Manage Sessions</Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -164,6 +252,77 @@ export default function ProfileScreen() {
                 </View>
               )}
             </View>
+          )}
+        </View>
+
+        {/* Booked Sessions */}
+        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>My Booked Support Sessions</Text>
+          {loadingBookings ? (
+            <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
+          ) : bookings.length === 0 ? (
+            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
+              You have no active support sessions scheduled. Browse sessions in the Explore section to connect with a peer supporter.
+            </Text>
+          ) : (
+            bookings.map((item) => (
+              <View key={item._id} style={[styles.bookingItem, { borderColor: colors.border }]}>
+                <View style={styles.bookingHeader}>
+                  <Text style={[styles.bookingTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
+                  <View style={[styles.bookingBadge, { backgroundColor: item.status === 'cancelled' ? colors.accentRed + '15' : colors.accentGreen + '15', borderColor: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen }]}>
+                    <Text style={[styles.bookingBadgeText, { color: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen }]}>
+                      {item.status.toUpperCase()}
+                    </Text>
+                  </View>
+                </View>
+                {item.description ? (
+                  <Text style={[styles.bookingDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
+                ) : null}
+                <View style={styles.bookingMetaRow}>
+                  <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
+                    Host: {item.supporterId?.name || 'Peer Supporter'}
+                  </Text>
+                </View>
+                <View style={styles.bookingMetaRow}>
+                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
+                  <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]}>
+                    {new Date(item.startTime).toLocaleDateString([], {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                    })}{' '}
+                    at{' '}
+                    {new Date(item.startTime).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}{' '}
+                    -{' '}
+                    {new Date(item.endTime).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </Text>
+                </View>
+                {item.meetingLink ? (
+                  <View style={styles.bookingMetaRow}>
+                    <Ionicons name="link-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.bookingMetaText, { color: colors.brand, fontWeight: '600' }]} numberOfLines={1}>
+                      Link: {item.meetingLink}
+                    </Text>
+                  </View>
+                ) : null}
+                {item.status !== 'cancelled' && (
+                  <TouchableOpacity
+                    style={[styles.cancelBtn, { borderColor: colors.accentRed }]}
+                    onPress={() => handleCancelBooking(item._id)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.cancelBtnText, { color: colors.accentRed }]}>Cancel Booking</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ))
           )}
         </View>
 
@@ -297,6 +456,60 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 15,
+    fontWeight: '600',
+  },
+  bookingItem: {
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  bookingHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  bookingTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    flex: 1,
+    marginRight: 8,
+  },
+  bookingBadge: {
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  bookingBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  bookingDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  bookingMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  bookingMetaText: {
+    fontSize: 13,
+  },
+  cancelBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  cancelBtnText: {
+    fontSize: 13,
     fontWeight: '600',
   },
 });

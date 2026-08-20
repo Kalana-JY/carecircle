@@ -9,6 +9,7 @@ const forumRoutes = require("./src/routes/forumRoutes");
 const peerSupporterRoutes = require("./src/routes/peerSupporterRoutes");
 const resourceRoutes = require("./src/routes/resourceRoutes");
 const goalRoutes = require("./src/routes/goalRoutes");
+const sessionRoutes = require("./src/routes/sessionRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -28,6 +29,7 @@ app.use("/api/forum", forumRoutes);
 app.use("/api/peer-supporters", peerSupporterRoutes);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/goals", goalRoutes);
+app.use("/api/sessions", sessionRoutes);
 
 
 // Base route for health check
