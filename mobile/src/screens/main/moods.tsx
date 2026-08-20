@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -12,8 +13,10 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { moodApi, MoodEntry } from '@/services/api';
+import { dateOnly, moodApi, MoodEntry } from '@/services/api';
+import type { MainStackParamList } from '../../navigation/MainNavigator';
 
 const moodOptions = [
   { label: 'Glad', emoji: '😊' },
@@ -23,36 +26,65 @@ const moodOptions = [
   { label: 'Tired', emoji: '😴' },
 ];
 
-const today = () => new Date().toISOString().slice(0, 10);
+type MoodsScreenProps = NativeStackScreenProps<MainStackParamList, 'Moods'>;
 
-export default function MoodsScreen() {
+const pad = (value: number) => String(value).padStart(2, '0');
+const today = () => {
+  const current = new Date();
+  return `${current.getFullYear()}-${pad(current.getMonth() + 1)}-${pad(current.getDate())}`;
+};
+const mergeUniqueEntries = (current: MoodEntry[], incoming: MoodEntry[]) => {
+  const entriesById = new Map(current.map((entry) => [entry._id, entry]));
+  incoming.forEach((entry) => entriesById.set(entry._id, entry));
+  return Array.from(entriesById.values());
+};
+
+export default function MoodsScreen({ route }: MoodsScreenProps) {
   const isDark = useColorScheme() === 'dark';
   const colors = theme(isDark);
   const [entries, setEntries] = useState<MoodEntry[]>([]);
-  const [selectedMood, setSelectedMood] = useState(moodOptions[0].label);
+  const initialMood = moodOptions.some((option) => option.label === route.params?.selectedMood)
+    ? route.params?.selectedMood || moodOptions[0].label
+    : moodOptions[0].label;
+  const [selectedMood, setSelectedMood] = useState(initialMood);
   const [date, setDate] = useState(today());
   const [intensity, setIntensity] = useState('5');
   const [notes, setNotes] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadEntries = useCallback(async () => {
+  const loadEntries = useCallback(async (pageToLoad = 1) => {
     try {
       setError(null);
-      const response = await moodApi.list();
-      setEntries(response.items);
+      if (pageToLoad === 1) setLoading(true);
+      else setLoadingMore(true);
+      const response = await moodApi.list(pageToLoad);
+      setEntries((current) => pageToLoad === 1 ? response.items : mergeUniqueEntries(current, response.items));
+      setPage(response.meta.page);
+      setHasMore(response.meta.page * response.meta.limit < response.meta.total);
     } catch (loadError: any) {
       setError(loadError.message || 'Unable to load mood entries.');
     } finally {
-      setLoading(false);
+      if (pageToLoad === 1) setLoading(false);
+      else setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEntries();
+    loadEntries(1);
   }, [loadEntries]);
+
+  useEffect(() => {
+    const requestedMood = route.params?.selectedMood;
+    if (!editingId && requestedMood && moodOptions.some((option) => option.label === requestedMood)) {
+      setSelectedMood(requestedMood);
+    }
+  }, [editingId, route.params?.selectedMood]);
 
   const resetForm = () => {
     setSelectedMood(moodOptions[0].label);
@@ -72,14 +104,13 @@ export default function MoodsScreen() {
     try {
       setSaving(true);
       setError(null);
-      const payload = { date: new Date(`${date}T12:00:00`).toISOString(), mood: selectedMood, intensity: parsedIntensity, notes };
+      const payload = { date: dateOnly(date), mood: selectedMood, intensity: parsedIntensity, notes };
       if (editingId) {
-        const updated = await moodApi.update(editingId, payload);
-        setEntries((current) => current.map((entry) => entry._id === editingId ? updated : entry));
+        await moodApi.update(editingId, payload);
       } else {
-        const created = await moodApi.create(payload);
-        setEntries((current) => [created, ...current]);
+        await moodApi.create(payload);
       }
+      await loadEntries(1);
       resetForm();
     } catch (saveError: any) {
       setError(saveError.message || 'Unable to save mood entry.');
@@ -91,7 +122,7 @@ export default function MoodsScreen() {
   const editEntry = (entry: MoodEntry) => {
     setEditingId(entry._id);
     setSelectedMood(entry.mood);
-    setDate(entry.date.slice(0, 10));
+    setDate(dateOnly(entry.date));
     setIntensity(String(entry.intensity || 5));
     setNotes(entry.notes || '');
   };
@@ -100,7 +131,7 @@ export default function MoodsScreen() {
     const remove = async () => {
       try {
         await moodApi.remove(id);
-        setEntries((current) => current.filter((entry) => entry._id !== id));
+        await loadEntries(1);
       } catch (deleteError: any) {
         setError(deleteError.message || 'Unable to delete mood entry.');
       }
@@ -127,7 +158,11 @@ export default function MoodsScreen() {
         <FlatList
           data={entries}
           keyExtractor={(item) => item._id}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={loadEntries} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => loadEntries(1)} />}
+          onEndReached={() => {
+            if (!loading && !loadingMore && hasMore) loadEntries(page + 1);
+          }}
+          onEndReachedThreshold={0.5}
           contentContainerStyle={styles.content}
           ListHeaderComponent={
             <View>
@@ -159,9 +194,10 @@ export default function MoodsScreen() {
             </View>
           }
           ListEmptyComponent={!loading ? <Text style={[styles.empty, { color: colors.secondary }]}>No mood entries yet.</Text> : null}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.brand} /> : null}
           renderItem={({ item }) => (
             <View style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.entryMain}><Text style={styles.entryEmoji}>{moodOptions.find((option) => option.label === item.mood)?.emoji || '🙂'}</Text><View><Text style={[styles.entryMood, { color: colors.text }]}>{item.mood}</Text><Text style={[styles.entryDate, { color: colors.secondary }]}>{item.date.slice(0, 10)} · Intensity {item.intensity || '-'}</Text>{item.notes ? <Text style={[styles.entryNotes, { color: colors.secondary }]}>{item.notes}</Text> : null}</View></View>
+              <View style={styles.entryMain}><Text style={styles.entryEmoji}>{moodOptions.find((option) => option.label === item.mood)?.emoji || '🙂'}</Text><View><Text style={[styles.entryMood, { color: colors.text }]}>{item.mood}</Text><Text style={[styles.entryDate, { color: colors.secondary }]}>{dateOnly(item.date)} · Intensity {item.intensity || '-'}</Text>{item.notes ? <Text style={[styles.entryNotes, { color: colors.secondary }]}>{item.notes}</Text> : null}</View></View>
               <View style={styles.entryActions}><Pressable onPress={() => editEntry(item)}><Text style={[styles.actionText, { color: colors.brand }]}>Edit</Text></Pressable><Pressable onPress={() => deleteEntry(item._id)}><Text style={styles.deleteText}>Delete</Text></Pressable></View>
             </View>
           )}

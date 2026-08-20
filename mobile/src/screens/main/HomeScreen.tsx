@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -12,9 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { MainStackNavigationProp } from '../../navigation/MainNavigator';
 import { useAuth } from '@/store/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts } from '@/constants/theme';
+import { dateOnly, journalApi, JournalEntry, moodApi, MoodEntry } from '@/services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -36,9 +38,11 @@ interface ResourceItem {
 
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<MainStackNavigationProp>();
   const isDark = useColorScheme() === 'dark';
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
+  const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
 
   // Dynamic Theme Colors
   const colors = {
@@ -78,6 +82,18 @@ export default function HomeScreen() {
     { id: '3', title: 'Stress Relief Journaling', duration: 'Daily Prompt', icon: 'book-outline', type: 'Journal' },
   ];
 
+  useEffect(() => {
+    Promise.all([moodApi.list(1), journalApi.list(1)])
+      .then(([moodsResponse, journalsResponse]) => {
+        setMoodHistory(moodsResponse.items.slice(0, 7));
+        setJournalEntries(journalsResponse.items.slice(0, 2));
+      })
+      .catch(() => {
+        setMoodHistory([]);
+        setJournalEntries([]);
+      });
+  }, []);
+
   const handleSignOut = () => {
     if (Platform.OS === 'web') {
       const confirmSignOut = window.confirm('Are you sure you want to sign out?');
@@ -94,8 +110,10 @@ export default function HomeScreen() {
 
   const handleMoodSelect = (moodLabel: string) => {
     setSelectedMood(moodLabel);
-    navigation.navigate('Moods');
+    navigation.navigate('Moods', { selectedMood: moodLabel });
   };
+
+  const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 
   // Get user initials for avatar
   const getInitials = (name?: string) => {
@@ -138,12 +156,10 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        {/* Mood Tracker Widget */}
+        <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{todayLabel}</Text>
         <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>How are you feeling today?</Text>
-          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>
-            Log your daily mood to track your emotional well-being.
-          </Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>How does today feel?</Text>
+          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>A small check-in can help you notice your patterns.</Text>
           <View style={styles.moodRow}>
             {moods.map((mood) => {
               const isSelected = selectedMood === mood.label;
@@ -170,6 +186,51 @@ export default function HomeScreen() {
               );
             })}
           </View>
+          <TouchableOpacity
+            style={[styles.saveButton, { backgroundColor: colors.text }]}
+            onPress={() => selectedMood && navigation.navigate('Moods', { selectedMood })}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.saveButtonText, { color: colors.background }]}>Save today&apos;s entry</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Mood history</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Moods')} activeOpacity={0.7}>
+            <Text style={[styles.sectionLink, { color: colors.brand }]}>Last 14 days</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyRow}>
+          {moodHistory.map((entry) => (
+            <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('Moods')}>
+              <Text style={[styles.historyDay, { color: colors.textSecondary }]}>{dateOnly(entry.date).slice(-2)}</Text>
+              <Text style={styles.historyEmoji}>{moods.find((mood) => mood.label === entry.mood)?.emoji || '🙂'}</Text>
+              <Text style={[styles.historyMood, { color: colors.textSecondary }]}>{entry.mood}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Journal entries</Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Journals')} activeOpacity={0.7}>
+            <Text style={[styles.sectionLink, { color: colors.brand }]}>See all</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.resourcesList}>
+          {journalEntries.map((entry) => (
+            <TouchableOpacity key={entry._id} style={[styles.journalRow, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Journals')} activeOpacity={0.8}>
+              <View style={[styles.journalDot, { backgroundColor: colors.text }]} />
+              <View style={styles.journalCopy}>
+                <Text style={[styles.journalMeta, { color: colors.textSecondary }]}>{dateOnly(entry.date)}{entry.mood ? ` · ${entry.mood}` : ''}</Text>
+                <Text style={[styles.journalTitle, { color: colors.text }]} numberOfLines={1}>{entry.title || 'Untitled entry'}</Text>
+                <Text style={[styles.journalBody, { color: colors.textSecondary }]} numberOfLines={2}>{entry.body}</Text>
+              </View>
+            </TouchableOpacity>
+          ))}
+          {journalEntries.length === 0 && <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Your recent reflections will appear here.</Text>}
         </View>
 
         {/* Daily Quote Sanctuary Widget */}
@@ -345,6 +406,11 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
+  dateLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
   card: {
     borderRadius: 16,
     padding: 20,
@@ -391,6 +457,41 @@ const styles = StyleSheet.create({
   },
   moodLabel: {
     fontSize: 11,
+    fontWeight: '600',
+  },
+  saveButton: {
+    borderRadius: 12,
+    alignItems: 'center',
+    paddingVertical: 13,
+    marginTop: 18,
+  },
+  saveButtonText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  historyRow: {
+    gap: 8,
+    paddingBottom: 24,
+  },
+  historyItem: {
+    width: 54,
+    minHeight: 70,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 7,
+  },
+  historyDay: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  historyEmoji: {
+    fontSize: 20,
+    marginVertical: 2,
+  },
+  historyMood: {
+    fontSize: 9,
     fontWeight: '600',
   },
   quoteCard: {
@@ -497,6 +598,41 @@ const styles = StyleSheet.create({
   },
   resourcesList: {
     gap: 12,
+  },
+  journalRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  journalDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 5,
+    marginRight: 10,
+  },
+  journalCopy: {
+    flex: 1,
+  },
+  journalMeta: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  journalTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 3,
+  },
+  journalBody: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  emptyText: {
+    fontSize: 13,
+    paddingVertical: 12,
   },
   resourceRow: {
     flexDirection: 'row',
