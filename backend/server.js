@@ -8,6 +8,7 @@ const journalRoutes = require("./src/routes/journalRoutes");
 const forumRoutes = require("./src/routes/forumRoutes");
 const peerSupporterRoutes = require("./src/routes/peerSupporterRoutes");
 const resourceRoutes = require("./src/routes/resourceRoutes");
+const goalRoutes = require("./src/routes/goalRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -26,6 +27,7 @@ app.use("/api/journals", journalRoutes);
 app.use("/api/forum", forumRoutes);
 app.use("/api/peer-supporters", peerSupporterRoutes);
 app.use("/api/resources", resourceRoutes);
+app.use("/api/goals", goalRoutes);
 
 
 // Base route for health check

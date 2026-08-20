@@ -42,13 +42,26 @@ const goalSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+    progressEntries: [
+      {
+        value: {
+          type: Number,
+          required: true,
+          min: 0,
+        },
+        recordedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     deadline: {
       type: Date,
       required: [true, 'Please provide a deadline'],
     },
     status: {
       type: String,
-      enum: ['active', 'completed', 'overdue', 'paused'],
+      enum: ['active', 'in_progress', 'completed', 'overdue', 'paused'],
       default: 'active',
     },
     priority: {
