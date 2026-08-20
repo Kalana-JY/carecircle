@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '../hooks/use-color-scheme';
@@ -11,13 +12,27 @@ import CommunityScreen from '../screens/main/CommunityScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
 import MoodsScreen from '../screens/main/moods';
 import JournalsScreen from '../screens/main/journals';
+import MoodJournalHomeScreen from '../screens/main/MoodJournalHomeScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 
+export type MainStackParamList = {
+  MainTabs: undefined;
+  MoodJournalHome: undefined;
+  Moods: { selectedMood?: string } | undefined;
+  Journals: undefined;
+  ForumDetail: undefined;
+  CreatePost: undefined;
+  BecomeSupporter: undefined;
+  Modal: undefined;
+};
+
+export type MainStackNavigationProp = NativeStackNavigationProp<MainStackParamList>;
+
 const Tab = createBottomTabNavigator();
-const Stack = createNativeStackNavigator();
+const Stack = createNativeStackNavigator<MainStackParamList>();
 
 function MainTabs() {
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
@@ -91,6 +106,11 @@ export default function MainNavigator() {
         name="Moods"
         component={MoodsScreen}
         options={{ title: 'Mood Journal' }}
+      />
+      <Stack.Screen
+        name="MoodJournalHome"
+        component={MoodJournalHomeScreen}
+        options={{ title: 'Mood & Journal' }}
       />
       <Stack.Screen
         name="Journals"
