@@ -333,6 +333,122 @@ exports.updateProgress = async (req, res) => {
   }
 };
 
+// @desc    Log a progress entry and recalculate goal completion
+// @route   POST /api/goals/:id/progress/entries
+// @access  Private
+exports.logProgressEntry = async (req, res) => {
+  try {
+    const { value } = req.body;
+
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Progress value must be a non-negative number',
+      });
+    }
+
+    const goal = await Goal.findById(req.params.id);
+
+    if (!goal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Goal not found',
+      });
+    }
+
+    if (goal.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this goal',
+      });
+    }
+
+    if (typeof goal.targetValue !== 'number' || goal.targetValue <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'A positive targetValue is required to log progress',
+      });
+    }
+
+    goal.progressEntries.push({ value });
+    const recordedProgress = goal.progressEntries.reduce((total, entry) => total + entry.value, 0);
+    goal.progress = Math.min((recordedProgress / goal.targetValue) * 100, 100);
+
+    if (goal.progress === 100) {
+      goal.status = 'completed';
+      goal.completedDate = goal.completedDate || new Date();
+    }
+
+    await goal.save();
+
+    return res.status(201).json({
+      success: true,
+      data: goal,
+      completionPercentage: goal.progress,
+      message: 'Progress entry logged successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// @desc    Update goal status
+// @route   PATCH /api/goals/:id/status
+// @access  Private
+exports.updateGoalStatus = async (req, res) => {
+  try {
+    const { status } = req.body;
+    const allowedStatuses = ['in_progress', 'completed', 'paused'];
+
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be in_progress, completed, or paused',
+      });
+    }
+
+    const goal = await Goal.findById(req.params.id);
+
+    if (!goal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Goal not found',
+      });
+    }
+
+    if (goal.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this goal',
+      });
+    }
+
+    goal.status = status;
+    if (status === 'completed') {
+      goal.progress = 100;
+      goal.completedDate = goal.completedDate || new Date();
+    } else {
+      goal.completedDate = null;
+    }
+
+    await goal.save();
+
+    return res.json({
+      success: true,
+      data: goal,
+      message: 'Goal status updated successfully',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 // @desc    Add milestone to goal
 // @route   POST /api/goals/:id/milestones
 // @access  Private
