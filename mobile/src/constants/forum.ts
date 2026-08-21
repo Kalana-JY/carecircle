@@ -23,6 +23,7 @@ export interface ForumComment {
   isAnonymous: boolean;
   status: 'approved' | 'reported';
   authorName: string | null;
+  isMine?: boolean;
   createdAt: string;
 }
 
@@ -33,6 +34,7 @@ export interface ForumPostItem {
   content: string;
   isAnonymous: boolean;
   authorName: string | null;
+  isMine?: boolean;
   createdAt: string;
   updatedAt: string;
   commentCount: number;
