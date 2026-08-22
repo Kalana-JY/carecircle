@@ -37,6 +37,8 @@ const getBaseUrl = (): string => {
 export const API_URL = getBaseUrl();
 console.log('[API] Base URL configured to:', API_URL);
 
+export const dateOnly = (value: string) => value.slice(0, 10);
+
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
@@ -121,7 +123,7 @@ export interface JournalPayload {
 }
 
 export const moodApi = {
-  list: () => apiFetch<CollectionResponse<MoodEntry>>('/api/moods?limit=100'),
+  list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
   create: (entry: MoodPayload) =>
     apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<MoodPayload>) =>
@@ -132,7 +134,7 @@ export const moodApi = {
 };
 
 export const journalApi = {
-  list: () => apiFetch<CollectionResponse<JournalEntry>>('/api/journals?limit=100'),
+  list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
   create: (entry: JournalPayload) =>
     apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<JournalPayload>) =>

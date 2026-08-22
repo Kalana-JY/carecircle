@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
@@ -12,12 +13,25 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { journalApi, JournalEntry } from '@/services/api';
+import { dateOnly, journalApi, JournalEntry } from '@/services/api';
+import type { MainStackParamList } from '../../navigation/MainNavigator';
 
-const today = () => new Date().toISOString().slice(0, 10);
+type JournalsScreenProps = NativeStackScreenProps<MainStackParamList, 'Journals'>;
 
-export default function JournalsScreen() {
+const pad = (value: number) => String(value).padStart(2, '0');
+const today = () => {
+  const current = new Date();
+  return `${current.getFullYear()}-${pad(current.getMonth() + 1)}-${pad(current.getDate())}`;
+};
+const mergeUniqueEntries = (current: JournalEntry[], incoming: JournalEntry[]) => {
+  const entriesById = new Map(current.map((entry) => [entry._id, entry]));
+  incoming.forEach((entry) => entriesById.set(entry._id, entry));
+  return Array.from(entriesById.values());
+};
+
+export default function JournalsScreen(_props: JournalsScreenProps) {
   const isDark = useColorScheme() === 'dark';
   const colors = theme(isDark);
   const [entries, setEntries] = useState<JournalEntry[]>([]);
@@ -27,23 +41,31 @@ export default function JournalsScreen() {
   const [mood, setMood] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadEntries = useCallback(async () => {
+  const loadEntries = useCallback(async (pageToLoad = 1) => {
     try {
       setError(null);
-      const response = await journalApi.list();
-      setEntries(response.items);
+      if (pageToLoad === 1) setLoading(true);
+      else setLoadingMore(true);
+      const response = await journalApi.list(pageToLoad);
+      setEntries((current) => pageToLoad === 1 ? response.items : mergeUniqueEntries(current, response.items));
+      setPage(response.meta.page);
+      setHasMore(response.meta.page * response.meta.limit < response.meta.total);
     } catch (loadError: any) {
       setError(loadError.message || 'Unable to load journal entries.');
     } finally {
-      setLoading(false);
+      if (pageToLoad === 1) setLoading(false);
+      else setLoadingMore(false);
     }
   }, []);
 
   useEffect(() => {
-    loadEntries();
+    loadEntries(1);
   }, [loadEntries]);
 
   const resetForm = () => {
@@ -63,14 +85,13 @@ export default function JournalsScreen() {
     try {
       setSaving(true);
       setError(null);
-      const payload = { date: new Date(`${date}T12:00:00`).toISOString(), title: title.trim(), body: body.trim(), mood: mood.trim() };
+      const payload = { date: dateOnly(date), title: title.trim(), body: body.trim(), mood: mood.trim() };
       if (editingId) {
-        const updated = await journalApi.update(editingId, payload);
-        setEntries((current) => current.map((entry) => entry._id === editingId ? updated : entry));
+        await journalApi.update(editingId, payload);
       } else {
-        const created = await journalApi.create(payload);
-        setEntries((current) => [created, ...current]);
+        await journalApi.create(payload);
       }
+      await loadEntries(1);
       resetForm();
     } catch (saveError: any) {
       setError(saveError.message || 'Unable to save journal entry.');
@@ -81,7 +102,7 @@ export default function JournalsScreen() {
 
   const editEntry = (entry: JournalEntry) => {
     setEditingId(entry._id);
-    setDate(entry.date.slice(0, 10));
+    setDate(dateOnly(entry.date));
     setTitle(entry.title || '');
     setBody(entry.body);
     setMood(entry.mood || '');
@@ -91,7 +112,7 @@ export default function JournalsScreen() {
     const remove = async () => {
       try {
         await journalApi.remove(id);
-        setEntries((current) => current.filter((entry) => entry._id !== id));
+        await loadEntries(1);
       } catch (deleteError: any) {
         setError(deleteError.message || 'Unable to delete journal entry.');
       }
@@ -118,7 +139,11 @@ export default function JournalsScreen() {
         <FlatList
           data={entries}
           keyExtractor={(item) => item._id}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={loadEntries} />}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={() => loadEntries(1)} />}
+          onEndReached={() => {
+            if (!loading && !loadingMore && hasMore) loadEntries(page + 1);
+          }}
+          onEndReachedThreshold={0.5}
           contentContainerStyle={styles.content}
           ListHeaderComponent={
             <View>
@@ -143,10 +168,11 @@ export default function JournalsScreen() {
             </View>
           }
           ListEmptyComponent={!loading ? <Text style={[styles.empty, { color: colors.secondary }]}>No journal entries yet.</Text> : null}
+          ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.brand} /> : null}
           renderItem={({ item }) => (
             <View style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]}>
               <Text style={[styles.entryTitle, { color: colors.text }]}>{item.title || 'Untitled entry'}</Text>
-              <Text style={[styles.entryDate, { color: colors.secondary }]}>{item.date.slice(0, 10)}{item.mood ? ` · ${item.mood}` : ''}</Text>
+              <Text style={[styles.entryDate, { color: colors.secondary }]}>{dateOnly(item.date)}{item.mood ? ` · ${item.mood}` : ''}</Text>
               <Text style={[styles.entryBody, { color: colors.text }]} numberOfLines={4}>{item.body}</Text>
               <View style={styles.entryActions}><Pressable onPress={() => editEntry(item)}><Text style={[styles.actionText, { color: colors.brand }]}>Edit</Text></Pressable><Pressable onPress={() => deleteEntry(item._id)}><Text style={styles.deleteText}>Delete</Text></Pressable></View>
             </View>
