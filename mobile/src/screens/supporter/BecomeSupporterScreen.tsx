@@ -11,8 +11,10 @@ import {
   Alert,
   Platform,
   KeyboardAvoidingView,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
@@ -22,6 +24,9 @@ export default function BecomeSupporterScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
+
+  // Toggle View
+  const [showForm, setShowForm] = useState<boolean>(false);
 
   // Form Fields
   const [name, setName] = useState<string>('');
@@ -48,9 +53,10 @@ export default function BecomeSupporterScreen() {
     text: isDark ? '#ECEDEE' : '#1C2024',
     textSecondary: isDark ? '#9BA1A6' : '#687076',
     border: isDark ? '#2E2E2E' : '#E6E8EB',
-    inputBg: isDark ? '#1A1A1A' : '#F0F2F5',
+    inputBg: isDark ? '#1A1A1A' : '#EDF2F7',
     brand: '#245B8B',
     brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
+    accentGreen: '#34C759',
     accentRed: '#FF3B30',
   };
 
@@ -111,6 +117,97 @@ export default function BecomeSupporterScreen() {
     }
   };
 
+  if (!showForm) {
+    // Learn More View
+    return (
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          {/* Header */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+              Become a Peer Supporter
+            </Text>
+          </View>
+          
+          <Text style={[styles.introText, { color: colors.textSecondary }]}>
+            Share your experiences, host counseling sessions, and make a meaningful difference. Outlined below are our volunteer guidelines, expectations, and benefits.
+          </Text>
+
+          {/* Requirements Section */}
+          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="checkbox-outline" size={22} color={colors.brand} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Requirements</Text>
+            </View>
+            <View style={styles.bullets}>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Must be at least <Text style={{ fontWeight: '700', color: colors.text }}>18 years of age</Text>.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Demonstrates active, compassionate, and non-judgmental listening skills.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Background verification, educational certificates, or professional references in counseling/support.
+              </Text>
+            </View>
+          </View>
+
+          {/* Expectations Section */}
+          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calendar-outline" size={22} color={colors.brand} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Expectations</Text>
+            </View>
+            <View style={styles.bullets}>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Commit to hosting at least <Text style={{ fontWeight: '700', color: colors.text }}>2 hours of support sessions</Text> per week.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Absolute client confidentiality and data privacy protection.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • strictly follow CareCircle&apos;s volunteer code of conduct.
+              </Text>
+            </View>
+          </View>
+
+          {/* Benefits Section */}
+          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="gift-outline" size={22} color={colors.brand} />
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Benefits</Text>
+            </View>
+            <View style={styles.bullets}>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Gain practical, real-world peer counseling experience.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Earn certified volunteer hours and letters of recommendation.
+              </Text>
+              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
+                • Access exclusive training workshops and professional mentoring resources.
+              </Text>
+            </View>
+          </View>
+
+          {/* Action Button */}
+          <TouchableOpacity
+            style={[styles.applyButton, { backgroundColor: colors.brand }]}
+            onPress={() => setShowForm(true)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.applyBtnText}>Apply Now</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // Application Form View
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView
@@ -118,9 +215,16 @@ export default function BecomeSupporterScreen() {
         style={{ flex: 1 }}
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-            Application Form
-          </Text>
+          {/* Header */}
+          <View style={styles.headerRow}>
+            <TouchableOpacity onPress={() => setShowForm(false)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+              Application Form
+            </Text>
+          </View>
+          
           <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
             Please fill in your correct credentials to apply for peer supporter certification.
           </Text>
@@ -236,16 +340,66 @@ export default function BecomeSupporterScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   scrollContainer: {
     padding: 20,
     paddingBottom: 40,
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    gap: 12,
+  },
+  backBtn: {
+    padding: 2,
+  },
   headerTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
-    marginBottom: 6,
     letterSpacing: -0.3,
+  },
+  introText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 20,
+  },
+  learnCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  bullets: {
+    gap: 8,
+  },
+  bulletPoint: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  applyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginTop: 10,
+  },
+  applyBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
   subtitle: {
     fontSize: 14,

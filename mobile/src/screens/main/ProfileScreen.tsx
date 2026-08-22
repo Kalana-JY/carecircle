@@ -186,15 +186,8 @@ export default function ProfileScreen() {
               {appStatus === 'none' && (
                 <View>
                   <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
-                    Apply to become a peer supporter to share your experiences and host counseling or support sessions.
+                    Apply to become a peer supporter via the Side Panel menu to share your experiences and host counseling or support sessions.
                   </Text>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: colors.brand }]}
-                    onPress={() => navigation.navigate('BecomeSupporter')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.actionBtnText}>Become a Peer Supporter</Text>
-                  </TouchableOpacity>
                 </View>
               )}
 
@@ -238,17 +231,10 @@ export default function ProfileScreen() {
                     <View style={styles.statusTextContainer}>
                       <Text style={[styles.statusTitle, { color: colors.text }]}>Application Rejected</Text>
                       <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                        Your application was not approved by administration at this time.
+                        Your application was not approved by administration at this time. You can re-apply via the Side Panel menu.
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
-                    onPress={() => navigation.navigate('BecomeSupporter')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.actionBtnText}>Apply Again</Text>
-                  </TouchableOpacity>
                 </View>
               )}
             </View>

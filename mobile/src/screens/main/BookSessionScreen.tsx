@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   Alert,
   Platform,
+  TextInput,
+  ScrollView,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -21,13 +24,14 @@ export default function BookSessionScreen() {
   const { user } = useAuth();
   const navigation = useNavigation();
   const isDark = useColorScheme() === 'dark';
+  
   const colors = {
     background: isDark ? '#121212' : '#F5F7FA',
     card: isDark ? '#1E1E1E' : '#FFFFFF',
     text: isDark ? '#ECEDEE' : '#1C2024',
     textSecondary: isDark ? '#9BA1A6' : '#687076',
     border: isDark ? '#2E2E2E' : '#E6E8EB',
-    inputBg: isDark ? '#1A1A1A' : '#F0F2F5',
+    inputBg: isDark ? '#1A1A1A' : '#EDF2F7',
     brand: '#245B8B',
     brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
     accentGreen: '#34C759',
@@ -37,6 +41,10 @@ export default function BookSessionScreen() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  
+  // Search & Filter States
+  const [searchText, setSearchText] = useState<string>('');
+  const [selectedSupporter, setSelectedSupporter] = useState<string | null>(null);
 
   const fetchAvailableSessions = useCallback(async () => {
     try {
@@ -58,7 +66,6 @@ export default function BookSessionScreen() {
   );
 
   const handleBookSession = async (session: any) => {
-    // Prevent booking own sessions
     if (session.supporterId?._id === user?._id) {
       Alert.alert('Cannot Book', 'You cannot book a support session that you host.');
       return;
@@ -105,6 +112,27 @@ export default function BookSessionScreen() {
       );
     }
   };
+
+  // Get unique supporters list for filter pills
+  const supportersMap = new Map();
+  sessions.forEach(s => {
+    if (s.supporterId && s.supporterId._id) {
+      supportersMap.set(s.supporterId._id, s.supporterId.name);
+    }
+  });
+  const uniqueSupporters = Array.from(supportersMap.entries()).map(([id, name]) => ({ id, name }));
+
+  // Filter sessions locally
+  const filteredSessions = sessions.filter(session => {
+    const titleMatch = (session.title || '').toLowerCase().includes(searchText.toLowerCase());
+    const descMatch = (session.description || '').toLowerCase().includes(searchText.toLowerCase());
+    const hostMatch = (session.supporterId?.name || '').toLowerCase().includes(searchText.toLowerCase());
+    
+    const matchesSearch = titleMatch || descMatch || hostMatch;
+    const matchesSupporter = !selectedSupporter || session.supporterId?._id === selectedSupporter;
+
+    return matchesSearch && matchesSupporter;
+  });
 
   const renderSessionItem = ({ item }: { item: any }) => {
     const start = new Date(item.startTime);
@@ -174,28 +202,87 @@ export default function BookSessionScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Peer Support Sessions</Text>
+        <View style={styles.titleRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.title, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Sessions</Text>
+        </View>
         <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
           Schedule a live chat session with approved peer support volunteers.
         </Text>
       </View>
 
+      {/* Search Bar */}
+      <View style={[styles.searchWrapper, { borderBottomColor: colors.border }]}>
+        <View style={[styles.searchBar, { backgroundColor: colors.inputBg }]}>
+          <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search by title, description or host..."
+            placeholderTextColor={colors.textSecondary}
+            value={searchText}
+            onChangeText={setSearchText}
+          />
+          {searchText ? (
+            <TouchableOpacity onPress={() => setSearchText('')}>
+              <Ionicons name="close-circle" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+      </View>
+
+      {/* Filters (Supporters list) */}
+      {uniqueSupporters.length > 0 && (
+        <View style={styles.filterSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+            <TouchableOpacity
+              style={[
+                styles.filterPill,
+                !selectedSupporter ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+              ]}
+              onPress={() => setSelectedSupporter(null)}
+            >
+              <Text style={[styles.filterPillText, { color: !selectedSupporter ? '#FFF' : colors.text }]}>All Hosts</Text>
+            </TouchableOpacity>
+
+            {uniqueSupporters.map(supporter => {
+              const isSelected = selectedSupporter === supporter.id;
+              return (
+                <TouchableOpacity
+                  key={supporter.id}
+                  style={[
+                    styles.filterPill,
+                    isSelected ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                  ]}
+                  onPress={() => setSelectedSupporter(supporter.id)}
+                >
+                  <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : colors.text }]}>{supporter.name}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
+
+      {/* Sessions list */}
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.brand} />
         </View>
-      ) : sessions.length === 0 ? (
+      ) : filteredSessions.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="calendar-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.3, marginBottom: 10 }} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sessions Available</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sessions Found</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            There are no peer supporter session slots open for booking at the moment. Please check back later.
+            We couldn&apos;t find any matching peer supporter session slots. Try clearing your search filters.
           </Text>
         </View>
       ) : (
         <FlatList
-          data={sessions}
+          data={filteredSessions}
           keyExtractor={(item) => item._id}
           renderItem={renderSessionItem}
           contentContainerStyle={styles.listContainer}
@@ -209,12 +296,21 @@ export default function BookSessionScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: '#0000001A',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  backButton: {
+    padding: 2,
   },
   title: {
     fontSize: 22,
@@ -223,7 +319,46 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 13,
-    marginTop: 2,
+    marginTop: 4,
+  },
+  searchWrapper: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  searchBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    height: 40,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    height: '100%',
+    fontSize: 14,
+    padding: 0,
+  },
+  filterSection: {
+    paddingVertical: 8,
+  },
+  filterScroll: {
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  filterPill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   center: {
     flex: 1,

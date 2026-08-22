@@ -132,7 +132,7 @@ export default function MainNavigator() {
       <Stack.Screen
         name="BecomeSupporter"
         component={BecomeSupporterScreen}
-        options={{ title: 'Become a Peer Supporter', headerBackTitle: 'Back' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ManageSchedule"
@@ -142,7 +142,7 @@ export default function MainNavigator() {
       <Stack.Screen
         name="BookSession"
         component={BookSessionScreen}
-        options={{ title: 'Book Support Session', headerBackTitle: 'Back' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Modal"
