@@ -183,4 +183,91 @@ const reportComment = async (req, res) => {
   }
 };
 
-module.exports = { createPost, listPosts, getPost, createComment, reportComment };
+// @desc    Get all reported comments
+// @route   GET /api/forum/reported-comments
+// @access  Private (Admin only)
+const getReportedComments = async (req, res) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    if (!isUserAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const comments = await Comment.find({ status: 'reported', deletedAt: null })
+      .populate('userId', 'name email')
+      .populate('postId', 'title')
+      .sort({ updatedAt: -1 });
+
+    res.json({
+      items: comments.map(c => ({
+        ...mapComment(c),
+        authorEmail: c.isAnonymous ? null : c.userId?.email || 'Unknown',
+        postTitle: c.postId?.title || 'Unknown Post'
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Resolve a reported comment (approve it back)
+// @route   PUT /api/forum/reported-comments/:commentId/resolve
+// @access  Private (Admin only)
+const resolveReportedComment = async (req, res) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    if (!isUserAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found.' });
+    }
+
+    comment.status = 'approved';
+    await comment.save();
+
+    res.json({ message: 'Comment resolved successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Delete a reported comment (soft delete)
+// @route   DELETE /api/forum/reported-comments/:commentId
+// @access  Private (Admin only)
+const deleteReportedComment = async (req, res) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    if (!isUserAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const comment = await Comment.findById(req.params.commentId);
+    if (!comment) {
+      return res.status(404).json({ message: 'Comment not found.' });
+    }
+
+    comment.deletedAt = new Date();
+    await comment.save();
+
+    res.json({ message: 'Comment deleted successfully.' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+module.exports = {
+  createPost,
+  listPosts,
+  getPost,
+  createComment,
+  reportComment,
+  getReportedComments,
+  resolveReportedComment,
+  deleteReportedComment
+};

@@ -62,19 +62,28 @@ const createSession = async (req, res) => {
 // @access  Private
 const getSessions = async (req, res) => {
   try {
-    const { supporterId } = req.query;
+    const { supporterId, admin } = req.query;
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
 
-    const query = {
-      status: 'available',
-      startTime: { $gt: new Date() },
-    };
-
-    if (supporterId) {
-      query.supporterId = supporterId;
+    let query = {};
+    if (admin === 'true' && isUserAdmin) {
+      if (supporterId) {
+        query.supporterId = supporterId;
+      }
+    } else {
+      query = {
+        status: 'available',
+        startTime: { $gt: new Date() },
+      };
+      if (supporterId) {
+        query.supporterId = supporterId;
+      }
     }
 
     const sessions = await Session.find(query)
       .populate('supporterId', 'name email phoneNumber')
+      .populate('userId', 'name email phoneNumber')
       .sort({ startTime: 1 });
 
     res.json({
@@ -196,13 +205,16 @@ const deleteSession = async (req, res) => {
       return res.status(404).json({ message: 'Session not found.' });
     }
 
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+
     // Verify ownership
-    if (session.supporterId.toString() !== req.user._id.toString()) {
+    if (session.supporterId.toString() !== req.user._id.toString() && !isUserAdmin) {
       return res.status(403).json({ message: 'Unauthorized. You do not host this session.' });
     }
 
     // If session is booked, don't allow hard delete directly - must cancel it instead
-    if (session.status === 'booked') {
+    if (session.status === 'booked' && !isUserAdmin) {
       return res.status(400).json({
         message: 'Cannot delete a booked session. Please cancel the session instead to notify the user.',
       });
