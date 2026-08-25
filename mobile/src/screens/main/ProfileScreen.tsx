@@ -9,6 +9,7 @@ import {
   ScrollView,
   Platform,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -176,70 +177,64 @@ export default function ProfileScreen() {
         </View>
 
         {/* Peer Supporter Block */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Peer Supporter Status</Text>
+        {appStatus !== 'none' && (
+          <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Peer Supporter Status</Text>
 
-          {loading ? (
-            <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
-          ) : (
-            <View style={styles.statusContent}>
-              {appStatus === 'none' && (
-                <View>
-                  <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
-                    Apply to become a peer supporter via the Side Panel menu to share your experiences and host counseling or support sessions.
-                  </Text>
-                </View>
-              )}
-
-              {appStatus === 'pending' && (
-                <View style={[styles.statusBox, { backgroundColor: colors.brandLight + '30', borderColor: colors.accentOrange }]}>
-                  <Ionicons name="time-outline" size={24} color={colors.accentOrange} />
-                  <View style={styles.statusTextContainer}>
-                    <Text style={[styles.statusTitle, { color: colors.text }]}>Application Pending</Text>
-                    <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                      Your application is currently under review by our admin team.
-                    </Text>
-                  </View>
-                </View>
-              )}
-
-              {appStatus === 'approved' && (
-                <View>
-                  <View style={[styles.statusBox, { backgroundColor: colors.accentGreen + '1A', borderColor: colors.accentGreen }]}>
-                    <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentGreen} />
+            {loading ? (
+              <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
+            ) : (
+              <View style={styles.statusContent}>
+                {appStatus === 'pending' && (
+                  <View style={[styles.statusBox, { backgroundColor: colors.brandLight + '30', borderColor: colors.accentOrange }]}>
+                    <Ionicons name="time-outline" size={24} color={colors.accentOrange} />
                     <View style={styles.statusTextContainer}>
-                      <Text style={[styles.statusTitle, { color: colors.text }]}>Approved Supporter</Text>
+                      <Text style={[styles.statusTitle, { color: colors.text }]}>Application Pending</Text>
                       <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                        Congratulations! You are certified to host support sessions.
+                        Your application is currently under review by our admin team.
                       </Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
-                    onPress={() => navigation.navigate('ManageSchedule')}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.actionBtnText}>Host & Manage Sessions</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+                )}
 
-              {appStatus === 'rejected' && (
-                <View>
-                  <View style={[styles.statusBox, { backgroundColor: colors.accentRed + '10', borderColor: colors.accentRed }]}>
-                    <Ionicons name="close-circle-outline" size={24} color={colors.accentRed} />
-                    <View style={styles.statusTextContainer}>
-                      <Text style={[styles.statusTitle, { color: colors.text }]}>Application Rejected</Text>
-                      <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                        Your application was not approved by administration at this time. You can re-apply via the Side Panel menu.
-                      </Text>
+                {appStatus === 'approved' && (
+                  <View>
+                    <View style={[styles.statusBox, { backgroundColor: colors.accentGreen + '1A', borderColor: colors.accentGreen }]}>
+                      <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentGreen} />
+                      <View style={styles.statusTextContainer}>
+                        <Text style={[styles.statusTitle, { color: colors.text }]}>Approved Supporter</Text>
+                        <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
+                          Congratulations! You are certified to host support sessions.
+                        </Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity
+                      style={[styles.actionBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
+                      onPress={() => navigation.navigate('ManageSchedule')}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.actionBtnText}>Host & Manage Sessions</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {appStatus === 'rejected' && (
+                  <View>
+                    <View style={[styles.statusBox, { backgroundColor: colors.accentRed + '10', borderColor: colors.accentRed }]}>
+                      <Ionicons name="close-circle-outline" size={24} color={colors.accentRed} />
+                      <View style={styles.statusTextContainer}>
+                        <Text style={[styles.statusTitle, { color: colors.text }]}>Application Rejected</Text>
+                        <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
+                          Your application was not approved by administration at this time. You can re-apply via the Side Panel menu.
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              )}
-            </View>
-          )}
-        </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
 
         {/* Booked Sessions */}
         <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -290,14 +285,40 @@ export default function ProfileScreen() {
                     })}
                   </Text>
                 </View>
-                {item.meetingLink ? (
+                {item.sessionType === 'physical' ? (
                   <View style={styles.bookingMetaRow}>
-                    <Ionicons name="link-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.bookingMetaText, { color: colors.brand, fontWeight: '600' }]} numberOfLines={1}>
-                      Link: {item.meetingLink}
+                    <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+                    <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]} numberOfLines={1}>
+                      Venue: {item.venue || 'N/A'}
                     </Text>
                   </View>
-                ) : null}
+                ) : (
+                  <View>
+                    <View style={styles.bookingMetaRow}>
+                      <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
+                      <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]}>
+                        Online Session (Jitsi)
+                      </Text>
+                    </View>
+                    {item.meetingLink ? (
+                      <TouchableOpacity
+                        style={[styles.joinBtn, { backgroundColor: colors.brand, marginTop: 6, marginBottom: 8 }]}
+                        onPress={() => {
+                          if (item.meetingLink) {
+                            Linking.openURL(item.meetingLink).catch((err) => {
+                              console.error('Failed to open link:', err);
+                              Alert.alert('Error', 'Could not open meeting link.');
+                            });
+                          }
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="videocam" size={16} color="#FFF" />
+                        <Text style={styles.joinBtnText}>Join Session</Text>
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                )}
                 {item.status !== 'cancelled' && (
                   <TouchableOpacity
                     style={[styles.cancelBtn, { borderColor: colors.accentRed }]}
@@ -497,5 +518,19 @@ const styles = StyleSheet.create({
   cancelBtnText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  joinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  joinBtnText: {
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
 });

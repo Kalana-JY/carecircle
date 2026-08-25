@@ -40,6 +40,15 @@ const sessionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    sessionType: {
+      type: String,
+      enum: ['online', 'physical'],
+      default: 'online',
+    },
+    venue: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

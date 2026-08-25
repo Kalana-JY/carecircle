@@ -11,6 +11,8 @@ import {
   Alert,
   RefreshControl,
   ScrollView,
+  Image,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../store/AuthContext';
@@ -26,6 +28,8 @@ interface SessionItem {
   endTime: string;
   status: 'available' | 'booked' | 'cancelled' | 'completed';
   meetingLink?: string;
+  sessionType?: 'online' | 'physical';
+  venue?: string;
   supporterId: {
     _id: string;
     name: string;
@@ -52,17 +56,37 @@ interface ReportedCommentItem {
   createdAt: string;
 }
 
+interface SupporterApplicationItem {
+  _id: string;
+  userId: {
+    _id: string;
+    name: string;
+    email: string;
+    phoneNumber?: string;
+  };
+  name: string;
+  age: number;
+  address: string;
+  occupation: string;
+  experiences: string;
+  evidence: string;
+  status: 'pending' | 'approved' | 'rejected';
+  createdAt: string;
+}
+
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
   const isDark = useColorScheme() === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
 
-  const [activeTab, setActiveTab] = useState<'sessions' | 'reports'>('sessions');
+  const [activeTab, setActiveTab] = useState<'sessions' | 'reports' | 'supporters'>('sessions');
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [reports, setReports] = useState<ReportedCommentItem[]>([]);
+  const [supporters, setSupporters] = useState<SupporterApplicationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedSession, setSelectedSession] = useState<SessionItem | null>(null);
+  const [viewingImageUri, setViewingImageUri] = useState<string | null>(null);
 
   const fetchData = useCallback(async (showIndicator = true) => {
     if (showIndicator) setLoading(true);
@@ -70,9 +94,12 @@ export default function AdminDashboard() {
       if (activeTab === 'sessions') {
         const data = await apiFetch('/api/sessions?admin=true');
         setSessions(data.items || []);
-      } else {
+      } else if (activeTab === 'reports') {
         const data = await apiFetch('/api/forum/reported-comments');
         setReports(data.items || []);
+      } else if (activeTab === 'supporters') {
+        const data = await apiFetch('/api/peer-supporters/applications');
+        setSupporters(data.items || []);
       }
     } catch (err: any) {
       console.error('[AdminDashboard] Fetch Error:', err);
@@ -147,6 +174,100 @@ export default function AdminDashboard() {
           },
         },
       ]
+    );
+  };
+
+  // Supporter application actions
+  const handleUpdateApplicationStatus = async (appId: string, status: 'approved' | 'rejected') => {
+    Alert.alert(
+      `Confirm ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+      `Are you sure you want to ${status} this peer supporter application?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: status.charAt(0).toUpperCase() + status.slice(1),
+          style: status === 'rejected' ? 'destructive' : 'default',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await apiFetch(`/api/peer-supporters/applications/${appId}`, {
+                method: 'PATCH',
+                body: { status },
+              });
+              Alert.alert('Success', `Application ${status} successfully.`);
+              fetchData(false);
+            } catch (err: any) {
+              Alert.alert('Error', err.message || `Failed to update status.`);
+              setLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const renderEvidence = (evidenceStr: string) => {
+    try {
+      const parsed = JSON.parse(evidenceStr);
+      if (parsed && typeof parsed === 'object' && parsed.uri) {
+        const isImage = parsed.type && parsed.type.startsWith('image/');
+        return (
+          <View style={[styles.evidenceBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}>
+            <View style={styles.evidenceHeader}>
+              <Ionicons
+                name={isImage ? 'image-outline' : 'document-text-outline'}
+                size={20}
+                color={colors.primary}
+              />
+              <Text style={[styles.evidenceNameText, { color: colors.text }]} numberOfLines={1}>
+                {parsed.name || 'evidence_file'}
+              </Text>
+            </View>
+
+            {isImage ? (
+              <View style={styles.evidenceImageContainer}>
+                <Image source={{ uri: parsed.uri }} style={styles.evidenceCardImage} resizeMode="cover" />
+                <TouchableOpacity
+                  style={[styles.viewFullBtn, { backgroundColor: colors.primary }]}
+                  onPress={() => setViewingImageUri(parsed.uri)}
+                >
+                  <Ionicons name="scan-outline" size={14} color={colors.onPrimary} />
+                  <Text style={[styles.viewFullBtnText, { color: colors.onPrimary }]}>View Full Photo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.documentContainer}>
+                <Text style={[styles.documentMetaText, { color: colors.textSecondary }]}>
+                  Type: {parsed.type.toUpperCase()}
+                  {parsed.size ? ` • ${(parsed.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                </Text>
+                {Platform.OS === 'web' && (
+                  <TouchableOpacity
+                    style={[styles.viewFullBtn, { backgroundColor: colors.primary, marginTop: 8 }]}
+                    onPress={() => {
+                      const link = document.createElement('a');
+                      link.href = parsed.uri;
+                      link.download = parsed.name || 'evidence_document';
+                      link.click();
+                    }}
+                  >
+                    <Ionicons name="download-outline" size={14} color={colors.onPrimary} />
+                    <Text style={[styles.viewFullBtnText, { color: colors.onPrimary }]}>Download Document</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+          </View>
+        );
+      }
+    } catch {
+      // Fallback
+    }
+
+    return (
+      <View style={[styles.evidenceTextBox, { backgroundColor: colors.inputBg }]}>
+        <Text style={[styles.evidenceText, { color: colors.text }]}>{evidenceStr}</Text>
+      </View>
     );
   };
 
@@ -288,6 +409,83 @@ export default function AdminDashboard() {
     );
   };
 
+  const getSupporterStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return { bg: isDark ? '#3d2e14' : '#FFF3CD', text: isDark ? '#ffc107' : '#856404' };
+      case 'approved':
+        return { bg: isDark ? '#143825' : '#D1E7DD', text: isDark ? '#75B798' : '#0F5132' };
+      case 'rejected':
+        return { bg: isDark ? '#44191C' : '#F8D7DA', text: isDark ? '#EA868F' : '#842029' };
+      default:
+        return { bg: isDark ? '#2D3238' : '#E2E3E5', text: isDark ? '#A3A6A9' : '#41464B' };
+    }
+  };
+
+  const renderSupporterCard = ({ item }: { item: SupporterApplicationItem }) => {
+    const statusStyle = getSupporterStatusColor(item.status);
+    return (
+      <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <View style={styles.cardHeader}>
+          <Text style={[styles.sessionTitle, { color: colors.text }]} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <View style={[styles.badge, { backgroundColor: statusStyle.bg }]}>
+            <Text style={[styles.badgeText, { color: statusStyle.text }]}>
+              {item.status.toUpperCase()}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.cardBody}>
+          <Text style={[styles.metaDetail, { color: colors.textSecondary }]}>
+            Age: <Text style={[styles.boldText, { color: colors.text }]}>{item.age}</Text>
+          </Text>
+          <Text style={[styles.metaDetail, { color: colors.textSecondary }]}>
+            Occupation: <Text style={[styles.boldText, { color: colors.text }]}>{item.occupation}</Text>
+          </Text>
+          <Text style={[styles.metaDetail, { color: colors.textSecondary }]}>
+            Email: <Text style={[styles.boldText, { color: colors.text }]}>{item.userId?.email || 'N/A'}</Text>
+          </Text>
+          <Text style={[styles.metaDetail, { color: colors.textSecondary }]}>
+            Phone: <Text style={[styles.boldText, { color: colors.text }]}>{item.userId?.phoneNumber || 'N/A'}</Text>
+          </Text>
+          <Text style={[styles.metaDetail, { color: colors.textSecondary }]}>
+            Address: <Text style={[styles.boldText, { color: colors.text }]}>{item.address}</Text>
+          </Text>
+
+          <Text style={[styles.sectionSubtitle, { color: colors.text, marginTop: 12 }]}>Experiences:</Text>
+          <View style={[styles.quoteContainer, { backgroundColor: colors.inputBg, marginTop: 4, marginBottom: 12 }]}>
+            <Text style={[styles.quoteText, { color: colors.text }]}>{item.experiences}</Text>
+          </View>
+
+          <Text style={[styles.sectionSubtitle, { color: colors.text }]}>Evidence / Credentials:</Text>
+          {renderEvidence(item.evidence)}
+        </View>
+
+        {item.status === 'pending' && (
+          <View style={[styles.cardActions, { borderTopColor: colors.border }]}>
+            <TouchableOpacity
+              style={[styles.actionButton, styles.successButton, { backgroundColor: '#143825' }]}
+              onPress={() => handleUpdateApplicationStatus(item._id, 'approved')}
+            >
+              <Ionicons name="checkmark-circle-outline" size={16} color="#75B798" />
+              <Text style={[styles.actionBtnText, { color: '#75B798' }]}>Approve</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.dangerButton, { backgroundColor: '#44191C' }]}
+              onPress={() => handleUpdateApplicationStatus(item._id, 'rejected')}
+            >
+              <Ionicons name="close-circle-outline" size={16} color="#EA868F" />
+              <Text style={[styles.actionBtnText, { color: '#EA868F' }]}>Reject</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       {/* Top Header */}
@@ -357,6 +555,33 @@ export default function AdminDashboard() {
             Reports
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.tabButton,
+            activeTab === 'supporters'
+              ? { backgroundColor: colors.primary }
+              : { backgroundColor: colors.inputBg },
+          ]}
+          onPress={() => {
+            setActiveTab('supporters');
+            setLoading(true);
+          }}
+        >
+          <Ionicons
+            name="people-outline"
+            size={18}
+            color={activeTab === 'supporters' ? colors.onPrimary : colors.textSecondary}
+          />
+          <Text
+            style={[
+              styles.tabText,
+              { color: activeTab === 'supporters' ? colors.onPrimary : colors.textSecondary },
+            ]}
+          >
+            Supporters
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* List content */}
@@ -367,9 +592,15 @@ export default function AdminDashboard() {
         </View>
       ) : (
         <FlatList
-          data={activeTab === 'sessions' ? sessions : reports}
+          data={(activeTab === 'sessions' ? sessions : activeTab === 'reports' ? reports : supporters) as any[]}
           keyExtractor={(item) => item._id}
-          renderItem={activeTab === 'sessions' ? renderSessionCard : renderReportCard}
+          renderItem={
+            (activeTab === 'sessions'
+              ? renderSessionCard
+              : activeTab === 'reports'
+              ? renderReportCard
+              : renderSupporterCard) as any
+          }
           contentContainerStyle={styles.listContent}
           refreshControl={
             <RefreshControl
@@ -381,18 +612,30 @@ export default function AdminDashboard() {
           ListEmptyComponent={
             <View style={styles.emptyState}>
               <Ionicons
-                name={activeTab === 'sessions' ? 'calendar-outline' : 'checkmark-done-circle-outline'}
+                name={
+                  activeTab === 'sessions'
+                    ? 'calendar-outline'
+                    : activeTab === 'reports'
+                    ? 'checkmark-done-circle-outline'
+                    : 'people-outline'
+                }
                 size={64}
-                color={activeTab === 'sessions' ? colors.border : '#75B798'}
+                color={activeTab === 'reports' ? '#75B798' : colors.border}
                 style={styles.emptyIcon}
               />
               <Text style={[styles.emptyTitle, { color: colors.text }]}>
-                {activeTab === 'sessions' ? 'No Sessions Found' : 'All Clear!'}
+                {activeTab === 'sessions'
+                  ? 'No Sessions Found'
+                  : activeTab === 'reports'
+                  ? 'All Clear!'
+                  : 'No Applications Found'}
               </Text>
               <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
                 {activeTab === 'sessions'
                   ? 'No support sessions have been hosted or scheduled yet.'
-                  : 'There are currently no reported comments awaiting moderation.'}
+                  : activeTab === 'reports'
+                  ? 'There are currently no reported comments awaiting moderation.'
+                  : 'There are no peer supporter applications submitted yet.'}
               </Text>
             </View>
           }
@@ -464,9 +707,23 @@ export default function AdminDashboard() {
                   </Text>
                 </View>
 
-                {selectedSession.meetingLink ? (
+                <View style={styles.modalSection}>
+                  <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>SESSION TYPE</Text>
+                  <Text style={[styles.modalValue, { color: colors.text, fontWeight: '600' }]}>
+                    {selectedSession.sessionType === 'physical' ? 'Physical Session' : 'Online Session'}
+                  </Text>
+                </View>
+
+                {selectedSession.sessionType === 'physical' ? (
                   <View style={styles.modalSection}>
-                    <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>MEETING LINK</Text>
+                    <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>VENUE / LOCATION</Text>
+                    <Text style={[styles.modalValue, { color: colors.text }]}>
+                      {selectedSession.venue || 'N/A'}
+                    </Text>
+                  </View>
+                ) : selectedSession.meetingLink ? (
+                  <View style={styles.modalSection}>
+                    <Text style={[styles.modalLabel, { color: colors.textSecondary }]}>MEETING LINK (JITSI)</Text>
                     <Text style={[styles.modalValue, { color: colors.primary }]}>
                       {selectedSession.meetingLink}
                     </Text>
@@ -518,6 +775,18 @@ export default function AdminDashboard() {
           </View>
         </Modal>
       )}
+
+      {/* Full screen photo viewer Modal */}
+      <Modal visible={!!viewingImageUri} transparent={true} animationType="fade" onRequestClose={() => setViewingImageUri(null)}>
+        <View style={styles.fullscreenModalOverlay}>
+          <TouchableOpacity style={styles.closeFullscreenBtn} onPress={() => setViewingImageUri(null)}>
+            <Ionicons name="close-circle" size={42} color="#FFFFFF" />
+          </TouchableOpacity>
+          {viewingImageUri && (
+            <Image source={{ uri: viewingImageUri }} style={styles.fullscreenModalImage} resizeMode="contain" />
+          )}
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -767,5 +1036,89 @@ const styles = StyleSheet.create({
   modalCloseBtnText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  sectionSubtitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 6,
+  },
+  evidenceBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 4,
+  },
+  evidenceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  evidenceNameText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  evidenceImageContainer: {
+    alignItems: 'center',
+    position: 'relative',
+    height: 150,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  evidenceCardImage: {
+    width: '100%',
+    height: '100%',
+  },
+  viewFullBtn: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  viewFullBtnText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  documentContainer: {
+    padding: 4,
+  },
+  documentMetaText: {
+    fontSize: 12,
+  },
+  evidenceTextBox: {
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 4,
+  },
+  evidenceText: {
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  fullscreenModalOverlay: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeFullscreenBtn: {
+    position: 'absolute',
+    top: 40,
+    right: 20,
+    zIndex: 10,
+  },
+  fullscreenModalImage: {
+    width: '95%',
+    height: '80%',
   },
 });
