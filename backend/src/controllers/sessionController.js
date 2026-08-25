@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const Session = require('../models/Session');
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
 
@@ -17,7 +18,7 @@ const createSession = async (req, res) => {
       return res.status(403).json({ message: 'Only certified peer supporters can create and host sessions.' });
     }
 
-    const { title, description, startTime, endTime, meetingLink } = req.body;
+    const { title, description, startTime, endTime, sessionType, venue } = req.body;
 
     if (!title || !startTime || !endTime) {
       return res.status(400).json({ message: 'Please provide title, start time, and end time.' });
@@ -38,13 +39,34 @@ const createSession = async (req, res) => {
       return res.status(400).json({ message: 'End time must be after the start time.' });
     }
 
+    const type = sessionType || 'online';
+    if (!['online', 'physical'].includes(type)) {
+      return res.status(400).json({ message: 'Invalid session type.' });
+    }
+
+    const sessionId = new mongoose.Types.ObjectId();
+    let meetingLink = '';
+    let finalVenue = '';
+
+    if (type === 'online') {
+      meetingLink = `https://meet.jit.si/CareCircle-${sessionId}`;
+    } else {
+      if (!venue || !venue.trim()) {
+        return res.status(400).json({ message: 'Please provide a venue for physical sessions.' });
+      }
+      finalVenue = venue.trim();
+    }
+
     const session = await Session.create({
+      _id: sessionId,
       supporterId: req.user._id,
       title: title.trim(),
       description: description ? description.trim() : '',
       startTime: start,
       endTime: end,
-      meetingLink: meetingLink ? meetingLink.trim() : '',
+      sessionType: type,
+      venue: finalVenue,
+      meetingLink,
       status: 'available',
     });
 
@@ -149,7 +171,7 @@ const updateSession = async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized. You do not host this session.' });
     }
 
-    const { title, description, startTime, endTime, meetingLink, status } = req.body;
+    const { title, description, startTime, endTime, sessionType, venue, status } = req.body;
 
     // If booked, restrict updating key schedule attributes
     if (session.status === 'booked' && (startTime || endTime)) {
@@ -160,8 +182,31 @@ const updateSession = async (req, res) => {
 
     if (title) session.title = title.trim();
     if (description !== undefined) session.description = description.trim();
-    if (meetingLink !== undefined) session.meetingLink = meetingLink.trim();
     if (status) session.status = status;
+
+    // Manage session type and venue transitions
+    if (sessionType !== undefined) {
+      if (!['online', 'physical'].includes(sessionType)) {
+        return res.status(400).json({ message: 'Invalid session type.' });
+      }
+      session.sessionType = sessionType;
+      if (sessionType === 'online') {
+        session.meetingLink = `https://meet.jit.si/CareCircle-${session._id}`;
+        session.venue = '';
+      } else {
+        const finalVenue = venue !== undefined ? venue : session.venue;
+        if (!finalVenue || !finalVenue.trim()) {
+          return res.status(400).json({ message: 'Venue is required for physical sessions.' });
+        }
+        session.meetingLink = '';
+        session.venue = finalVenue.trim();
+      }
+    } else if (session.sessionType === 'physical' && venue !== undefined) {
+      if (!venue || !venue.trim()) {
+        return res.status(400).json({ message: 'Venue is required for physical sessions.' });
+      }
+      session.venue = venue.trim();
+    }
 
     if (startTime || endTime) {
       const start = startTime ? new Date(startTime) : session.startTime;
