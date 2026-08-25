@@ -181,6 +181,17 @@ export default function BookSessionScreen() {
           </Text>
         </View>
 
+        <View style={styles.metaRow}>
+          <Ionicons
+            name={item.sessionType === 'physical' ? 'location-outline' : 'videocam-outline'}
+            size={14}
+            color={colors.textSecondary}
+          />
+          <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+            {item.sessionType === 'physical' ? `Physical • Venue: ${item.venue || 'N/A'}` : 'Online Meeting (Jitsi)'}
+          </Text>
+        </View>
+
         <TouchableOpacity
           style={[styles.bookBtn, { backgroundColor: colors.brand }]}
           onPress={() => handleBookSession(item)}

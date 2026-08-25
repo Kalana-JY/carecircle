@@ -12,9 +12,13 @@ import {
   Platform,
   KeyboardAvoidingView,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
@@ -34,10 +38,150 @@ export default function BecomeSupporterScreen() {
   const [address, setAddress] = useState<string>('');
   const [occupation, setOccupation] = useState<string>('');
   const [experiences, setExperiences] = useState<string>('');
-  const [evidence, setEvidence] = useState<string>('');
+  const [evidenceFile, setEvidenceFile] = useState<{
+    name: string;
+    type: string;
+    size?: number;
+    uri: string;
+  } | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Helper helper to convert file URI to base64
+  const getFileBase64 = async (uri: string): Promise<string> => {
+    try {
+      if (Platform.OS === 'web') {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        return await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const result = reader.result as string;
+            const commaIdx = result.indexOf(',');
+            resolve(commaIdx !== -1 ? result.substring(commaIdx + 1) : result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      } else {
+        return await FileSystem.readAsStringAsync(uri, {
+          encoding: 'base64',
+        });
+      }
+    } catch (err) {
+      console.error('Error converting file to base64:', err);
+      throw err;
+    }
+  };
+
+  const handleDocumentPick = async () => {
+    try {
+      setErrorMsg(null);
+      const result = await DocumentPicker.getDocumentAsync({
+        type: '*/*',
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        setLoading(true);
+        const base64Content = await getFileBase64(asset.uri);
+        const mimeType = asset.mimeType || 'application/octet-stream';
+        setEvidenceFile({
+          name: asset.name,
+          type: mimeType,
+          size: asset.size,
+          uri: `data:${mimeType};base64,${base64Content}`,
+        });
+      }
+    } catch (err: any) {
+      console.error('[DocumentPicker] Error:', err);
+      setErrorMsg('Failed to select file. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCameraCapture = async () => {
+    try {
+      setErrorMsg(null);
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need camera permission to take a photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const fileName = asset.fileName || `photo_${Date.now()}.jpg`;
+        let base64Content = asset.base64;
+        if (!base64Content) {
+          setLoading(true);
+          base64Content = await getFileBase64(asset.uri);
+        }
+        setEvidenceFile({
+          name: fileName,
+          type: mimeType,
+          size: asset.fileSize,
+          uri: `data:${mimeType};base64,${base64Content}`,
+        });
+      }
+    } catch (err: any) {
+      console.error('[CameraPicker] Error:', err);
+      setErrorMsg('Failed to capture photo. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLibraryPick = async () => {
+    try {
+      setErrorMsg(null);
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Denied', 'We need gallery permission to select a photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        quality: 0.8,
+        base64: true,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        const asset = result.assets[0];
+        const mimeType = asset.mimeType || 'image/jpeg';
+        const fileName = asset.fileName || `image_${Date.now()}.jpg`;
+        let base64Content = asset.base64;
+        if (!base64Content) {
+          setLoading(true);
+          base64Content = await getFileBase64(asset.uri);
+        }
+        setEvidenceFile({
+          name: fileName,
+          type: mimeType,
+          size: asset.fileSize,
+          uri: `data:${mimeType};base64,${base64Content}`,
+        });
+      }
+    } catch (err: any) {
+      console.error('[LibraryPicker] Error:', err);
+      setErrorMsg('Failed to pick photo. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Prepopulate name from user profile
   useEffect(() => {
@@ -64,8 +208,8 @@ export default function BecomeSupporterScreen() {
     setErrorMsg(null);
 
     // Validate fields
-    if (!name.trim() || !age.trim() || !address.trim() || !occupation.trim() || !experiences.trim() || !evidence.trim()) {
-      setErrorMsg('Please fill in all form fields.');
+    if (!name.trim() || !age.trim() || !address.trim() || !occupation.trim() || !experiences.trim() || !evidenceFile) {
+      setErrorMsg('Please fill in all form fields and upload your evidence.');
       return;
     }
 
@@ -89,7 +233,7 @@ export default function BecomeSupporterScreen() {
           address: address.trim(),
           occupation: occupation.trim(),
           experiences: experiences.trim(),
-          evidence: evidence.trim(),
+          evidence: JSON.stringify(evidenceFile),
         }),
       });
 
@@ -302,20 +446,69 @@ export default function BecomeSupporterScreen() {
           </View>
 
           <View style={styles.formGroup}>
-            <Text style={[styles.label, { color: colors.text }]}>Evidence / References</Text>
-            <TextInput
-              style={[
-                styles.input,
-                styles.textArea,
-                { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border },
-              ]}
-              value={evidence}
-              onChangeText={setEvidence}
-              placeholder="Certificates, references, links, or documents supporting your counseling background"
-              placeholderTextColor={colors.textSecondary}
-              multiline
-              numberOfLines={3}
-            />
+            <Text style={[styles.label, { color: colors.text }]}>Evidence of Credentials</Text>
+            <Text style={[styles.inputHint, { color: colors.textSecondary, marginBottom: 10 }]}>
+              Please upload a document (PDF, PNG, JPG) or take a photo of your certificate/reference in real-time.
+            </Text>
+
+            {!evidenceFile ? (
+              <View style={styles.pickerOptionsContainer}>
+                <TouchableOpacity
+                  style={[styles.pickerOptionBtn, { backgroundColor: colors.brandLight, borderColor: colors.border }]}
+                  onPress={handleDocumentPick}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="document-attach-outline" size={24} color={colors.brand} />
+                  <Text style={[styles.pickerOptionText, { color: colors.text }]}>Upload File</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.pickerOptionBtn, { backgroundColor: colors.brandLight, borderColor: colors.border }]}
+                  onPress={handleCameraCapture}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="camera-outline" size={24} color={colors.brand} />
+                  <Text style={[styles.pickerOptionText, { color: colors.text }]}>Take Photo</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.pickerOptionBtn, { backgroundColor: colors.brandLight, borderColor: colors.border }]}
+                  onPress={handleLibraryPick}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="images-outline" size={24} color={colors.brand} />
+                  <Text style={[styles.pickerOptionText, { color: colors.text }]}>Gallery</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={[styles.evidencePreviewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                {evidenceFile.type.startsWith('image/') ? (
+                  <Image source={{ uri: evidenceFile.uri }} style={styles.evidenceImageThumbnail} />
+                ) : (
+                  <View style={[styles.documentIconContainer, { backgroundColor: colors.brandLight }]}>
+                    <Ionicons name="document-text-outline" size={32} color={colors.brand} />
+                  </View>
+                )}
+                
+                <View style={styles.evidenceDetails}>
+                  <Text style={[styles.evidenceFileName, { color: colors.text }]} numberOfLines={1}>
+                    {evidenceFile.name}
+                  </Text>
+                  <Text style={[styles.evidenceFileSize, { color: colors.textSecondary }]}>
+                    {evidenceFile.type.split('/')[1]?.toUpperCase() || 'FILE'}
+                    {evidenceFile.size ? ` • ${(evidenceFile.size / 1024 / 1024).toFixed(2)} MB` : ''}
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.removeEvidenceBtn}
+                  onPress={() => setEvidenceFile(null)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={20} color={colors.accentRed} />
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* Submit */}
@@ -452,5 +645,64 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  inputHint: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  pickerOptionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 8,
+    marginTop: 4,
+  },
+  pickerOptionBtn: {
+    flex: 1,
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    gap: 6,
+  },
+  pickerOptionText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  evidencePreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 10,
+    gap: 12,
+  },
+  evidenceImageThumbnail: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+  },
+  documentIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  evidenceDetails: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  evidenceFileName: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  evidenceFileSize: {
+    fontSize: 11,
+    marginTop: 2,
+  },
+  removeEvidenceBtn: {
+    padding: 6,
   },
 });

@@ -50,6 +50,8 @@ export default function ManageScheduleScreen() {
   const [startTime, setStartTime] = useState<string>(''); // HH:MM
   const [endTime, setEndTime] = useState<string>(''); // HH:MM
   const [meetingLink, setMeetingLink] = useState<string>('');
+  const [sessionType, setSessionType] = useState<'online' | 'physical'>('online');
+  const [venue, setVenue] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   // Fetch supporter schedule
@@ -82,6 +84,8 @@ export default function ManageScheduleScreen() {
     setStartTime('14:00');
     setEndTime('15:00');
     setMeetingLink('');
+    setSessionType('online');
+    setVenue('');
     setModalVisible(true);
   };
 
@@ -98,12 +102,19 @@ export default function ManageScheduleScreen() {
     setStartTime(startObj.toTimeString().substring(0, 5));
     setEndTime(endObj.toTimeString().substring(0, 5));
     setMeetingLink(session.meetingLink || '');
+    setSessionType(session.sessionType || 'online');
+    setVenue(session.venue || '');
     setModalVisible(true);
   };
 
   const handleSubmit = async () => {
     if (!title.trim() || !date.trim() || !startTime.trim() || !endTime.trim()) {
       Alert.alert('Validation Error', 'Please fill in Title, Date, Start Time, and End Time.');
+      return;
+    }
+
+    if (sessionType === 'physical' && !venue.trim()) {
+      Alert.alert('Validation Error', 'Please enter a venue for physical sessions.');
       return;
     }
 
@@ -135,7 +146,8 @@ export default function ManageScheduleScreen() {
         description: description.trim(),
         startTime: start.toISOString(),
         endTime: end.toISOString(),
-        meetingLink: meetingLink.trim(),
+        sessionType: sessionType,
+        venue: sessionType === 'physical' ? venue.trim() : '',
       };
 
       if (editingSession) {
@@ -262,14 +274,21 @@ export default function ManageScheduleScreen() {
           </Text>
         </View>
 
-        {item.meetingLink ? (
+        {item.sessionType === 'physical' ? (
           <View style={styles.metaRow}>
-            <Ionicons name="link-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.metaText, { color: colors.brand }]} numberOfLines={1}>
-              {item.meetingLink}
+            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+              Venue: <Text style={{ fontWeight: '600', color: colors.text }}>{item.venue || 'N/A'}</Text>
             </Text>
           </View>
-        ) : null}
+        ) : (
+          <View style={styles.metaRow}>
+            <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
+            <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
+              Online: <Text style={{ color: colors.brand }}>{item.meetingLink || 'Link auto-generated'}</Text>
+            </Text>
+          </View>
+        )}
 
         {isBooked && item.userId && (
           <View style={[styles.clientBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
@@ -443,16 +462,80 @@ export default function ManageScheduleScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Online Meeting Link (Optional)</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  placeholder="e.g. Zoom, Google Meet link"
-                  placeholderTextColor={colors.textSecondary}
-                  value={meetingLink}
-                  onChangeText={setMeetingLink}
-                  autoCapitalize="none"
-                />
+                <Text style={[styles.label, { color: colors.text }]}>Session Type</Text>
+                <View style={styles.tabSelectorContainer}>
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorTab,
+                      sessionType === 'online'
+                        ? { backgroundColor: colors.brand, borderColor: colors.brand }
+                        : { backgroundColor: colors.inputBg, borderColor: colors.border },
+                    ]}
+                    onPress={() => setSessionType('online')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="videocam-outline"
+                      size={18}
+                      color={sessionType === 'online' ? '#FFF' : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.selectorTabText,
+                        { color: sessionType === 'online' ? '#FFF' : colors.text },
+                      ]}
+                    >
+                      Online Meeting
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.selectorTab,
+                      sessionType === 'physical'
+                        ? { backgroundColor: colors.brand, borderColor: colors.brand }
+                        : { backgroundColor: colors.inputBg, borderColor: colors.border },
+                    ]}
+                    onPress={() => setSessionType('physical')}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons
+                      name="location-outline"
+                      size={18}
+                      color={sessionType === 'physical' ? '#FFF' : colors.textSecondary}
+                    />
+                    <Text
+                      style={[
+                        styles.selectorTabText,
+                        { color: sessionType === 'physical' ? '#FFF' : colors.text },
+                      ]}
+                    >
+                      Physical Venue
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
+
+              {sessionType === 'online' ? (
+                <View style={[styles.infoBox, { backgroundColor: colors.brandLight, marginBottom: 16 }]}>
+                  <Ionicons name="information-circle-outline" size={20} color={colors.brand} />
+                  <Text style={[styles.infoBoxText, { color: colors.text }]}>
+                    A secure Jitsi video session will be automatically generated once this slot is published.
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.label, { color: colors.text }]}>Venue / Location</Text>
+                  <TextInput
+                    style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+                    placeholder="e.g. Counseling Room B, Community Health Center"
+                    placeholderTextColor={colors.textSecondary}
+                    value={venue}
+                    onChangeText={setVenue}
+                    autoCapitalize="sentences"
+                  />
+                </View>
+              )}
 
               <TouchableOpacity
                 style={[styles.submitBtn, { backgroundColor: colors.brand }]}
@@ -696,5 +779,36 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  tabSelectorContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 4,
+  },
+  selectorTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 44,
+    borderWidth: 1,
+    borderRadius: 12,
+    gap: 8,
+  },
+  selectorTabText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 12,
+    gap: 10,
+  },
+  infoBoxText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 18,
   },
 });
