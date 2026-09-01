@@ -11,10 +11,23 @@ exports.createGoal = async (req, res) => {
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { title, description, category, target, deadline, priority, targetValue, targetUnit, notes, tags } =
-      req.body;
+    const {
+      title,
+      description,
+      category,
+      target,
+      deadline,
+      priority,
+      targetValue,
+      targetUnit,
+      notes,
+      tags,
+      reminder,
+      reminderTime,
+      completionDates,
+      progress,
+    } = req.body;
 
-    // Ensure deadline is in the future
     if (new Date(deadline) < new Date()) {
       return res.status(400).json({
         success: false,
@@ -34,6 +47,10 @@ exports.createGoal = async (req, res) => {
       priority,
       notes,
       tags: tags || [],
+      reminder: Boolean(reminder),
+      reminderTime: reminderTime || null,
+      completionDates: completionDates || [],
+      progress: typeof progress === 'number' ? progress : 0,
       status: 'active',
     });
 
@@ -157,9 +174,24 @@ exports.updateGoal = async (req, res) => {
       });
     }
 
-    const { title, description, category, target, deadline, priority, progress, status, targetValue, targetUnit, notes, tags } = req.body;
+    const {
+      title,
+      description,
+      category,
+      target,
+      deadline,
+      priority,
+      progress,
+      status,
+      targetValue,
+      targetUnit,
+      notes,
+      tags,
+      reminder,
+      reminderTime,
+      completionDates,
+    } = req.body;
 
-    // Validate deadline if provided
     if (deadline && new Date(deadline) < new Date() && status !== 'completed') {
       return res.status(400).json({
         success: false,
@@ -167,7 +199,6 @@ exports.updateGoal = async (req, res) => {
       });
     }
 
-    // Update fields
     if (title !== undefined) goal.title = title;
     if (description !== undefined) goal.description = description;
     if (category !== undefined) goal.category = category;
@@ -178,7 +209,7 @@ exports.updateGoal = async (req, res) => {
     if (priority !== undefined) goal.priority = priority;
     if (progress !== undefined) {
       goal.progress = Math.min(progress, 100);
-      if (progress === 100 && status !== 'completed') {
+      if (progress >= 100 && goal.status !== 'completed') {
         goal.status = 'completed';
         goal.completedDate = new Date();
       }
@@ -190,6 +221,9 @@ exports.updateGoal = async (req, res) => {
     }
     if (notes !== undefined) goal.notes = notes;
     if (tags !== undefined) goal.tags = tags;
+    if (reminder !== undefined) goal.reminder = Boolean(reminder);
+    if (reminderTime !== undefined) goal.reminderTime = reminderTime || null;
+    if (completionDates !== undefined) goal.completionDates = completionDates;
 
     goal = await goal.save();
 
@@ -398,6 +432,66 @@ exports.logProgressEntry = async (req, res) => {
 // @desc    Update goal status
 // @route   PATCH /api/goals/:id/status
 // @access  Private
+exports.markTodayDone = async (req, res) => {
+  try {
+    const goal = await Goal.findById(req.params.id);
+
+    if (!goal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Goal not found',
+      });
+    }
+
+    if (goal.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this goal',
+      });
+    }
+
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const alreadyDoneToday = goal.completionDates.some((date) => {
+      const completionDate = new Date(date);
+      return completionDate >= startOfDay && completionDate < new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+    });
+
+    if (alreadyDoneToday) {
+      return res.json({
+        success: true,
+        data: goal,
+        message: 'Goal already marked as done today',
+      });
+    }
+
+    goal.completionDates.push(new Date());
+    const completedCount = goal.completionDates.length;
+    const progress = Math.min(100, (completedCount / 7) * 100);
+    goal.progress = progress;
+
+    if (completedCount >= 7) {
+      goal.status = 'completed';
+      goal.completedDate = new Date();
+    } else if (goal.status === 'completed') {
+      goal.status = 'active';
+    }
+
+    await goal.save();
+
+    return res.json({
+      success: true,
+      data: goal,
+      message: 'Goal marked as done for today',
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
 exports.updateGoalStatus = async (req, res) => {
   try {
     const { status } = req.body;

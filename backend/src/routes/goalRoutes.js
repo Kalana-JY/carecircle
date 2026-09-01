@@ -10,6 +10,7 @@ const {
   completeGoal,
   updateProgress,
   logProgressEntry,
+  markTodayDone,
   updateGoalStatus,
   addMilestone,
   completeMilestone,
@@ -108,6 +109,7 @@ router.delete('/:id', deleteGoal);
 router.patch('/:id/complete', completeGoal);
 router.patch('/:id/progress', validateProgress, updateProgress);
 router.post('/:id/progress/entries', logProgressEntry);
+router.post('/:id/complete-today', markTodayDone);
 router.patch('/:id/status', updateGoalStatus);
 router.post('/:id/milestones', validateMilestone, addMilestone);
 router.patch('/:id/milestones/:milestoneId', completeMilestone);

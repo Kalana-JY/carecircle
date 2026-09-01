@@ -74,3 +74,109 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
   }
   return data;
 }
+<<<<<<< Updated upstream
+=======
+
+export interface MoodEntry {
+  _id: string;
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JournalEntry {
+  _id: string;
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface GoalRecord {
+  _id: string;
+  userId?: string;
+  title: string;
+  description?: string;
+  category?: string;
+  target?: string;
+  targetValue?: number | null;
+  targetUnit?: string;
+  deadline?: string;
+  notes?: string;
+  reminder?: boolean;
+  reminderTime?: string | null;
+  status?: 'active' | 'completed' | 'paused' | 'overdue' | 'in_progress';
+  progress?: number;
+  completionDates?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CollectionResponse<T> = {
+  items: T[];
+  meta: { page: number; limit: number; total: number };
+};
+
+export interface MoodPayload {
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+}
+
+export interface JournalPayload {
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+}
+
+export const moodApi = {
+  list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
+  create: (entry: MoodPayload) =>
+    apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<MoodPayload>) =>
+    apiFetch<MoodEntry>(`/api/moods/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/moods/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const journalApi = {
+  list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
+  create: (entry: JournalPayload) =>
+    apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<JournalPayload>) =>
+    apiFetch<JournalEntry>(`/api/journals/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/journals/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const goalApi = {
+  list: () => apiFetch<{ success: boolean; count: number; data: GoalRecord[] }>('/api/goals'),
+  getById: (id: string) => apiFetch<{ success: boolean; data: GoalRecord }>(`/api/goals/${id}`),
+  create: (goal: Partial<GoalRecord>) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>('/api/goals', { method: 'POST', body: goal }),
+  update: (id: string, goal: Partial<GoalRecord>) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}`, { method: 'PUT', body: goal }),
+  remove: (id: string) =>
+    apiFetch<{ success: boolean; message: string }>(`/api/goals/${id}`, { method: 'DELETE' }),
+  markTodayDone: (id: string) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/complete-today`, { method: 'POST' }),
+  updateStatus: (id: string, status: string) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/status`, { method: 'PATCH', body: { status } }),
+};
+>>>>>>> Stashed changes

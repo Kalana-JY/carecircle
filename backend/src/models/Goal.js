@@ -36,12 +36,24 @@ const goalSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    reminder: {
+      type: Boolean,
+      default: false,
+    },
+    reminderTime: {
+      type: String,
+      default: null,
+    },
     progress: {
       type: Number,
       default: 0,
       min: 0,
       max: 100,
     },
+    completionDates: [{
+      type: Date,
+      default: undefined,
+    }],
     progressEntries: [
       {
         value: {

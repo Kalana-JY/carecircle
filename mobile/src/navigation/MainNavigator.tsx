@@ -13,6 +13,35 @@ import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
+<<<<<<< Updated upstream
+=======
+import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
+import BookSessionScreen from '../screens/main/BookSessionScreen';
+import GoalsScreen from '../screens/main/GoalsScreen';
+import AddGoalScreen from '../screens/main/AddGoalScreen';
+import AchievementsScreen from '../screens/main/AchievementsScreen';
+import ReportsScreen from '../screens/main/ReportsScreen';
+
+export type MainStackParamList = {
+  MainTabs: undefined;
+  MoodJournalHome: undefined;
+  Moods: { selectedMood?: string } | undefined;
+  Journals: undefined;
+  ForumDetail: undefined;
+  CreatePost: undefined;
+  BecomeSupporter: undefined;
+  Modal: undefined;
+  Goals: { refreshKey?: number } | undefined;
+  AddGoal: { goal?: any; mode?: 'create' | 'edit' } | undefined;
+  Achievements: undefined;
+  Reports: undefined;
+  Profile: undefined;
+  BookSession: undefined;
+  ManageSchedule: undefined;
+};
+
+export type MainStackNavigationProp = NativeStackNavigationProp<MainStackParamList>;
+>>>>>>> Stashed changes
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -44,16 +73,6 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Explore"
-        component={ExploreScreen}
-        options={{
-          title: 'Explore',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="compass" size={size} color={color} />
-          ),
-        }}
-      />
-      <Tab.Screen
         name="Community"
         component={CommunityScreen}
         options={{
@@ -64,12 +83,32 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
+        name="Mood"
+        component={MoodJournalHomeScreen}
         options={{
-          title: 'Profile',
+          title: 'Mood',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+            <Ionicons name="happy" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{
+          title: 'Goals',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="flag" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Resources"
+        component={ExploreScreen}
+        options={{
+          title: 'Resources',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="document-text" size={size} color={color} />
           ),
         }}
       />
@@ -99,6 +138,26 @@ export default function MainNavigator() {
         name="BecomeSupporter"
         component={BecomeSupporterScreen}
         options={{ title: 'Become a Peer Supporter', headerBackTitle: 'Back' }}
+      />
+      <Stack.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddGoal"
+        component={AddGoalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Achievements"
+        component={AchievementsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Reports"
+        component={ReportsScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Modal"
