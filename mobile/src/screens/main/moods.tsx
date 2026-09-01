@@ -39,7 +39,7 @@ const mergeUniqueEntries = (current: MoodEntry[], incoming: MoodEntry[]) => {
   return Array.from(entriesById.values());
 };
 
-export default function MoodsScreen({ route }: MoodsScreenProps) {
+export default function MoodsScreen({ navigation, route }: MoodsScreenProps) {
   const isDark = useColorScheme() === 'dark';
   const colors = theme(isDark);
   const [entries, setEntries] = useState<MoodEntry[]>([]);
@@ -168,6 +168,9 @@ export default function MoodsScreen({ route }: MoodsScreenProps) {
             <View>
               <Text style={[styles.title, { color: colors.text }]}>Mood journal</Text>
               <Text style={[styles.subtitle, { color: colors.secondary }]}>Record how you feel and revisit your patterns.</Text>
+              <Pressable onPress={() => navigation.navigate('WellnessActivities')} style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, alignItems: 'center', marginBottom: 16 }}>
+                <Text style={{ color: colors.brand, fontWeight: '800' }}>Track wellness activities</Text>
+              </Pressable>
               <View style={[styles.form, { backgroundColor: colors.card, borderColor: colors.border }]}>
                 <Text style={[styles.label, { color: colors.text }]}>How are you feeling?</Text>
                 <View style={styles.chips}>
