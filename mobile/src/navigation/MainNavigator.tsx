@@ -13,6 +13,7 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 import MoodsScreen from '../screens/main/moods';
 import JournalsScreen from '../screens/main/journals';
 import MoodJournalHomeScreen from '../screens/main/MoodJournalHomeScreen';
+import WellnessActivitiesScreen from '../screens/main/WellnessActivitiesScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
@@ -25,6 +26,7 @@ export type MainStackParamList = {
   MoodJournalHome: undefined;
   Moods: { selectedMood?: string } | undefined;
   Journals: undefined;
+  WellnessActivities: undefined;
   ForumDetail: undefined;
   CreatePost: undefined;
   BecomeSupporter: undefined;
@@ -118,6 +120,11 @@ export default function MainNavigator() {
         name="Journals"
         component={JournalsScreen}
         options={{ title: 'Journal' }}
+      />
+      <Stack.Screen
+        name="WellnessActivities"
+        component={WellnessActivitiesScreen}
+        options={{ title: 'Wellness activities' }}
       />
       <Stack.Screen
         name="ForumDetail"
