@@ -26,7 +26,7 @@ export function AppNavigator() {
     }
 
     const email = user.email.toLowerCase();
-    if (email.includes('admin')) {
+    if (user.isAdmin || email.includes('admin')) {
       return <AdminNavigator />;
     }
 

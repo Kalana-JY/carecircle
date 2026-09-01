@@ -74,7 +74,65 @@ const getApplicationStatus = async (req, res) => {
   }
 };
 
+// @desc    Get all peer supporter applications (Admin only)
+// @route   GET /api/peer-supporters/applications
+// @access  Private (Admin only)
+const getApplications = async (req, res) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    if (!isUserAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const applications = await PeerSupporterApplication.find({})
+      .populate('userId', 'name email phoneNumber')
+      .sort({ createdAt: -1 });
+
+    res.json({
+      items: applications,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Approve or Reject a peer supporter application (Admin only)
+// @route   PATCH /api/peer-supporters/applications/:id
+// @access  Private (Admin only)
+const updateApplicationStatus = async (req, res) => {
+  try {
+    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    if (!isUserAdmin) {
+      return res.status(403).json({ message: 'Access denied. Admin only.' });
+    }
+
+    const { status } = req.body;
+    if (!status || !['approved', 'rejected', 'pending'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value.' });
+    }
+
+    const application = await PeerSupporterApplication.findById(req.params.id);
+    if (!application) {
+      return res.status(404).json({ message: 'Application not found.' });
+    }
+
+    application.status = status;
+    await application.save();
+
+    res.json({
+      message: `Application status updated to ${status} successfully.`,
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   applyForPeerSupporter,
   getApplicationStatus,
+  getApplications,
+  updateApplicationStatus,
 };

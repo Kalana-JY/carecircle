@@ -18,6 +18,8 @@ import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
+import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
+import BookSessionScreen from '../screens/main/BookSessionScreen';
 
 export type MainStackParamList = {
   MainTabs: undefined;
@@ -137,7 +139,17 @@ export default function MainNavigator() {
       <Stack.Screen
         name="BecomeSupporter"
         component={BecomeSupporterScreen}
-        options={{ title: 'Become a Peer Supporter', headerBackTitle: 'Back' }}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ManageSchedule"
+        component={ManageScheduleScreen}
+        options={{ title: 'Manage Support Sessions', headerBackTitle: 'Back' }}
+      />
+      <Stack.Screen
+        name="BookSession"
+        component={BookSessionScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Modal"

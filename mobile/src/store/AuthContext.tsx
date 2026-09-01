@@ -8,6 +8,7 @@ export interface UserSession {
   email: string;
   phoneNumber: string;
   token: string;
+  isAdmin?: boolean;
 }
 
 interface AuthContextType {

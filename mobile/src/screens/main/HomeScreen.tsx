@@ -9,6 +9,7 @@ import {
   Platform,
   Dimensions,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,6 +18,7 @@ import { useAuth } from '@/store/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts } from '@/constants/theme';
 import { dateOnly, journalApi, JournalEntry, moodApi, MoodEntry } from '@/services/api';
+import { SidePanel } from '../../components/SidePanel';
 
 const { width } = Dimensions.get('window');
 
@@ -43,6 +45,9 @@ export default function HomeScreen() {
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
+  
+  // Custom Side Panel State
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
 
   // Dynamic Theme Colors
   const colors = {
@@ -128,28 +133,21 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      {/* Sticky Custom Header */}
+      {/* Custom Header (Simplified: no name, greeting, or logout) */}
       <View style={[styles.header, { borderColor: colors.border, backgroundColor: colors.card }]}>
-        <View style={styles.headerProfile}>
-          <View style={[styles.avatar, { backgroundColor: colors.avatarBg }]}>
-            <Text style={[styles.avatarText, { color: colors.avatarText }]}>
-              {getInitials(user?.name)}
-            </Text>
-          </View>
-          <View>
-            <Text style={[styles.greeting, { color: colors.textSecondary }]}>Hello,</Text>
-            <Text style={[styles.name, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-              {user?.name || 'Guest User'}
-            </Text>
-          </View>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => setIsSidePanelOpen(true)} style={styles.menuButton} activeOpacity={0.7}>
+            <Ionicons name="menu-outline" size={26} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+            CareCircle
+          </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.signOutBtn, { borderColor: colors.border }]}
-          onPress={handleSignOut}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="log-out-outline" size={22} color="#E53935" />
-        </TouchableOpacity>
+        <View style={[styles.avatar, { backgroundColor: colors.avatarBg }]}>
+          <Text style={[styles.avatarText, { color: colors.avatarText }]}>
+            {getInitials(user?.name)}
+          </Text>
+        </View>
       </View>
 
       <ScrollView
@@ -333,11 +331,12 @@ export default function HomeScreen() {
           ))}
         </View>
       </ScrollView>
+
+      <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
     </SafeAreaView>
   );
 }
 
-// Separate style to avoid key conflict
 const circleHeaderStyles = StyleSheet.create({
   circleHeader: {
     flexDirection: 'row',
@@ -349,6 +348,7 @@ const circleHeaderStyles = StyleSheet.create({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
@@ -369,38 +369,29 @@ const styles = StyleSheet.create({
       },
     }),
   },
-  headerProfile: {
+  headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
+  menuButton: {
+    padding: 2,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-  },
-  greeting: {
     fontSize: 13,
-    fontWeight: '500',
-  },
-  name: {
-    fontSize: 16,
     fontWeight: '700',
-  },
-  signOutBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   scrollContainer: {
     padding: 20,

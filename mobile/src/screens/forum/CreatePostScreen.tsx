@@ -13,23 +13,25 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts, Colors } from '@/constants/theme';
 import { apiFetch } from '@/services/api';
-import { FORUM_CATEGORIES } from '@/constants/forum';
+import { FORUM_CATEGORIES, ForumPostItem } from '@/constants/forum';
 
 export default function CreatePostScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const editingPost = route.params?.post as ForumPostItem | undefined;
   const colorScheme = useColorScheme() === 'dark' ? 'dark' : 'light';
   const colors = Colors[colorScheme];
 
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(editingPost?.category ?? null);
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
-  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [title, setTitle] = useState(editingPost?.title ?? '');
+  const [content, setContent] = useState(editingPost?.content ?? '');
+  const [isAnonymous, setIsAnonymous] = useState(editingPost?.isAnonymous ?? false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [focusedInput, setFocusedInput] = useState<'title' | 'content' | null>(null);
@@ -52,18 +54,31 @@ export default function CreatePostScreen() {
     setIsSubmitting(true);
 
     try {
-      const created = await apiFetch('/api/forum', {
-        method: 'POST',
-        body: {
-          category: selectedCategory,
-          title: title.trim(),
-          content: content.trim(),
-          isAnonymous,
-        },
-      });
-      navigation.replace('ForumDetail', { id: created._id });
+      if (editingPost) {
+        await apiFetch(`/api/forum/${editingPost._id}`, {
+          method: 'PUT',
+          body: {
+            category: selectedCategory,
+            title: title.trim(),
+            content: content.trim(),
+            isAnonymous,
+          },
+        });
+        navigation.goBack();
+      } else {
+        const created = await apiFetch('/api/forum', {
+          method: 'POST',
+          body: {
+            category: selectedCategory,
+            title: title.trim(),
+            content: content.trim(),
+            isAnonymous,
+          },
+        });
+        navigation.replace('ForumDetail', { id: created._id });
+      }
     } catch (err: any) {
-      setError(err.message || 'Failed to create post. Please try again.');
+      setError(err.message || 'Failed to save post. Please try again.');
       setIsSubmitting(false);
     }
   };
@@ -81,7 +96,7 @@ export default function CreatePostScreen() {
           <Ionicons name="chevron-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-          New Post
+          {editingPost ? 'Edit Post' : 'New Post'}
         </Text>
         <View style={styles.headerButton} />
       </View>
@@ -277,7 +292,7 @@ export default function CreatePostScreen() {
               <ActivityIndicator color={colors.onPrimary} />
             ) : (
               <Text style={[styles.buttonText, { color: colors.onPrimary, fontFamily: Fonts.rounded || 'System' }]}>
-                Post to Community
+                {editingPost ? 'Save Changes' : 'Post to Community'}
               </Text>
             )}
           </TouchableOpacity>

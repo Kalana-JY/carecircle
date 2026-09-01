@@ -1,21 +1,23 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity, SafeAreaView, Platform, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts, Colors } from '@/constants/theme';
 
 export default function ExploreScreen() {
+  const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
   const [searchQuery, setSearchQuery] = useState('');
 
   const categories = [
-    { title: 'Meditation & Breathwork', count: '12 sessions', icon: 'leaf-outline', color: '#34C759' },
-    { title: 'Cognitive Exercises', count: '8 exercises', icon: 'brain-outline', color: '#AF52DE' },
-    { title: 'Sleep Sanctuary', count: '15 tracks', icon: 'moon-outline', color: '#FF9500' },
-    { title: 'Gratitude Journaling', count: '5 prompts', icon: 'journal-outline', color: '#FF2D55' },
-    { title: 'Crisis Hotlines & Help', count: 'Directory', icon: 'call-outline', color: '#5856D6' },
-    { title: 'Self-Compassion Courses', count: '4 courses', icon: 'heart-outline', color: '#FF9500' },
+    { title: 'Meditation & Breathwork', count: '12 sessions', icon: 'leaf-outline', color: '#34C759', route: null },
+    { title: 'Cognitive Exercises', count: '8 exercises', icon: 'brain-outline', color: '#AF52DE', route: null },
+    { title: 'Sleep Sanctuary', count: '15 tracks', icon: 'moon-outline', color: '#FF9500', route: null },
+    { title: 'Gratitude Journaling', count: '5 prompts', icon: 'journal-outline', color: '#FF2D55', route: null },
+    { title: 'Peer Support Sessions', count: 'Connect live', icon: 'people-outline', color: '#245B8B', route: 'BookSession' },
+    { title: 'Crisis Hotlines & Help', count: 'Directory', icon: 'call-outline', color: '#5856D6', route: null },
   ];
 
   return (
@@ -48,7 +50,13 @@ export default function ExploreScreen() {
               key={idx}
               style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
               activeOpacity={0.8}
-              onPress={() => Alert.alert('Start Activity', `Launching "${category.title}"...`)}
+              onPress={() => {
+                if (category.route) {
+                  navigation.navigate(category.route);
+                } else {
+                  Alert.alert('Start Activity', `Launching "${category.title}"...`);
+                }
+              }}
             >
               <View style={[styles.iconBg, { backgroundColor: category.color + '1A' }]}>
                 <Ionicons name={category.icon as any} size={24} color={category.color} />

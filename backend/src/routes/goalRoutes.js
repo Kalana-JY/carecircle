@@ -9,6 +9,8 @@ const {
   deleteGoal,
   completeGoal,
   updateProgress,
+  logProgressEntry,
+  updateGoalStatus,
   addMilestone,
   completeMilestone,
   getGoalStats,
@@ -105,6 +107,8 @@ router.delete('/:id', deleteGoal);
 // Additional endpoints
 router.patch('/:id/complete', completeGoal);
 router.patch('/:id/progress', validateProgress, updateProgress);
+router.post('/:id/progress/entries', logProgressEntry);
+router.patch('/:id/status', updateGoalStatus);
 router.post('/:id/milestones', validateMilestone, addMilestone);
 router.patch('/:id/milestones/:milestoneId', completeMilestone);
 
