@@ -122,6 +122,26 @@ export interface JournalPayload {
   tags?: string[];
 }
 
+export interface WellnessActivity {
+  _id: string;
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+  logs: { date: string; minutes: number }[];
+}
+
+export interface WellnessActivityPayload {
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+}
+
 export const moodApi = {
   list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
   create: (entry: MoodPayload) =>
@@ -142,4 +162,12 @@ export const journalApi = {
   remove: async (id: string) => {
     await apiFetch<void>(`/api/journals/${id}`, { method: 'DELETE' });
   },
+};
+
+export const wellnessActivityApi = {
+  list: () => apiFetch<{ items: WellnessActivity[]; meta: { total: number } }>('/api/wellness-activities'),
+  create: (activity: WellnessActivityPayload) => apiFetch<WellnessActivity>('/api/wellness-activities', { method: 'POST', body: activity }),
+  update: (id: string, activity: Partial<WellnessActivityPayload>) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}`, { method: 'PATCH', body: activity }),
+  remove: (id: string) => apiFetch<void>(`/api/wellness-activities/${id}`, { method: 'DELETE' }),
+  log: (id: string, date: string, minutes = 0) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}/logs`, { method: 'POST', body: { date, minutes } }),
 };
