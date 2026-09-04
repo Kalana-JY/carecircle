@@ -1,21 +1,32 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { useAuth } from '../store/AuthContext';
-import { useColorScheme } from '../hooks/use-color-scheme';
 import { ActivityIndicator, View } from 'react-native';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 import AdminNavigator from './AdminNavigator';
 
+const CareTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#3A7CA5',
+    background: '#F4F7FB',
+    card: '#FFFFFF',
+    text: '#1C242C',
+    border: '#E7ECF1',
+    notification: '#3A7CA5',
+  },
+};
+
 export function AppNavigator() {
   const { user, isLoading } = useAuth();
-  const colorScheme = useColorScheme();
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colorScheme === 'dark' ? '#121212' : '#F4F7FC' }}>
-        <ActivityIndicator size="large" color="#245B8B" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F4F7FB' }}>
+        <ActivityIndicator size="large" color="#3A7CA5" />
       </View>
     );
   }
@@ -34,7 +45,7 @@ export function AppNavigator() {
   };
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={CareTheme}>
       {getNavigator()}
     </NavigationContainer>
   );
