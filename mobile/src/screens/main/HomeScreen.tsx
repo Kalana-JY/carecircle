@@ -13,7 +13,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import type { MainStackNavigationProp } from '../../navigation/MainNavigator';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { MainStackNavigationProp, MainTabParamList } from '../../navigation/MainNavigator';
 import { useAuth } from '@/store/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts } from '@/constants/theme';
@@ -40,7 +42,7 @@ interface ResourceItem {
 
 export default function HomeScreen() {
   const { user, signOut } = useAuth();
-  const navigation = useNavigation<MainStackNavigationProp>();
+  const navigation = useNavigation<CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Home'>, MainStackNavigationProp>>();
   const isDark = useColorScheme() === 'dark';
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
@@ -115,7 +117,7 @@ export default function HomeScreen() {
 
   const handleMoodSelect = (moodLabel: string) => {
     setSelectedMood(moodLabel);
-    navigation.navigate('Moods', { selectedMood: moodLabel });
+    navigation.navigate('Mood', { selectedMood: moodLabel, hubTab: 'moods' });
   };
 
   const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
@@ -135,19 +137,14 @@ export default function HomeScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       {/* Custom Header (Simplified: no name, greeting, or logout) */}
       <View style={[styles.header, { borderColor: colors.border, backgroundColor: colors.card }]}>
-        <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => setIsSidePanelOpen(true)} style={styles.menuButton} activeOpacity={0.7}>
-            <Ionicons name="menu-outline" size={26} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-            CareCircle
-          </Text>
-        </View>
-        <View style={[styles.avatar, { backgroundColor: colors.avatarBg }]}>
+        <TouchableOpacity onPress={() => setIsSidePanelOpen(true)} style={[styles.avatar, { backgroundColor: colors.avatarBg }]} activeOpacity={0.8}>
           <Text style={[styles.avatarText, { color: colors.avatarText }]}>
             {getInitials(user?.name)}
           </Text>
-        </View>
+        </TouchableOpacity>
+        <Text style={[styles.headerTitle, { color: colors.brand, fontFamily: Fonts.serif || Fonts.rounded || 'System' }]}>
+          CareCircle
+        </Text>
       </View>
 
       <ScrollView
@@ -186,7 +183,7 @@ export default function HomeScreen() {
           </View>
           <TouchableOpacity
             style={[styles.saveButton, { backgroundColor: colors.text }]}
-            onPress={() => selectedMood && navigation.navigate('Moods', { selectedMood })}
+            onPress={() => selectedMood && navigation.navigate('Mood', { selectedMood, hubTab: 'moods' })}
             activeOpacity={0.85}
           >
             <Text style={[styles.saveButtonText, { color: colors.background }]}>Save today&apos;s entry</Text>
@@ -195,14 +192,14 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Mood history</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Moods')} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigation.navigate('Mood', { hubTab: 'moods' })} activeOpacity={0.7}>
             <Text style={[styles.sectionLink, { color: colors.brand }]}>Last 14 days</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyRow}>
           {moodHistory.map((entry) => (
-            <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('Moods')}>
+            <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('Mood', { hubTab: 'moods' })}>
               <Text style={[styles.historyDay, { color: colors.textSecondary }]}>{dateOnly(entry.date).slice(-2)}</Text>
               <Text style={styles.historyEmoji}>{moods.find((mood) => mood.label === entry.mood)?.emoji || '🙂'}</Text>
               <Text style={[styles.historyMood, { color: colors.textSecondary }]}>{entry.mood}</Text>
@@ -212,14 +209,14 @@ export default function HomeScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Journal entries</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Journals')} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigation.navigate('Mood', { hubTab: 'journal' })} activeOpacity={0.7}>
             <Text style={[styles.sectionLink, { color: colors.brand }]}>See all</Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.resourcesList}>
           {journalEntries.map((entry) => (
-            <TouchableOpacity key={entry._id} style={[styles.journalRow, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Journals')} activeOpacity={0.8}>
+            <TouchableOpacity key={entry._id} style={[styles.journalRow, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Mood', { hubTab: 'journal' })} activeOpacity={0.8}>
               <View style={[styles.journalDot, { backgroundColor: colors.text }]} />
               <View style={styles.journalCopy}>
                 <Text style={[styles.journalMeta, { color: colors.textSecondary }]}>{dateOnly(entry.date)}{entry.mood ? ` · ${entry.mood}` : ''}</Text>
@@ -306,7 +303,7 @@ export default function HomeScreen() {
                 { backgroundColor: colors.card, borderColor: colors.border },
               ]}
               activeOpacity={0.8}
-              onPress={() => resource.type === 'Journal' ? navigation.navigate('Journals') : Alert.alert('Start Activity', `Launching "${resource.title}"...`)}
+              onPress={() => resource.type === 'Journal' ? navigation.navigate('Mood', { hubTab: 'journal' }) : navigation.navigate('Resources')}
             >
               <View style={styles.resourceLeft}>
                 <View style={[styles.resourceIconBg, { backgroundColor: colors.brandLight }]}>
@@ -378,7 +375,7 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 26,
     fontWeight: '700',
     letterSpacing: -0.3,
   },

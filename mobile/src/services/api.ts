@@ -37,7 +37,12 @@ const getBaseUrl = (): string => {
 export const API_URL = getBaseUrl();
 console.log('[API] Base URL configured to:', API_URL);
 
-export const dateOnly = (value: string) => value.slice(0, 10);
+export const dateOnly = (value?: string | Date | null) => {
+  if (!value) return '';
+  const text = typeof value === 'string' ? value : value.toISOString();
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : text.slice(0, 10);
+};
 
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
@@ -143,7 +148,7 @@ export interface WellnessActivityPayload {
 }
 
 export const moodApi = {
-  list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=${limit}`),
   create: (entry: MoodPayload) =>
     apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<MoodPayload>) =>
@@ -154,7 +159,7 @@ export const moodApi = {
 };
 
 export const journalApi = {
-  list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=${limit}`),
   create: (entry: JournalPayload) =>
     apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<JournalPayload>) =>

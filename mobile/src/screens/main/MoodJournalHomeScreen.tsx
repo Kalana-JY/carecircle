@@ -9,7 +9,8 @@ import {
   View,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import type { MainStackNavigationProp } from '../../navigation/MainNavigator';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/MainNavigator';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { dateOnly, journalApi, JournalEntry, moodApi, MoodEntry } from '@/services/api';
 
@@ -28,7 +29,7 @@ const today = () => {
 };
 
 export default function MoodJournalHomeScreen() {
-  const navigation = useNavigation<MainStackNavigationProp>();
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const isDark = useColorScheme() === 'dark';
   const colors = theme(isDark);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -67,7 +68,7 @@ export default function MoodJournalHomeScreen() {
           </View>
           <TouchableOpacity
             disabled={!selectedMood}
-            onPress={() => selectedMood && navigation.navigate('Moods', { selectedMood })}
+            onPress={() => selectedMood && navigation.navigate('MainTabs', { screen: 'Mood', params: { selectedMood, hubTab: 'moods' } })}
             style={[styles.saveButton, { backgroundColor: selectedMood ? colors.text : colors.border }]}
           >
             <Text style={[styles.saveText, { color: selectedMood ? colors.background : colors.secondary }]}>Save today&apos;s entry</Text>
@@ -76,12 +77,12 @@ export default function MoodJournalHomeScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Mood history</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Moods')}><Text style={[styles.link, { color: colors.brand }]}>See all</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Mood', params: { hubTab: 'moods' } })}><Text style={[styles.link, { color: colors.brand }]}>See all</Text></TouchableOpacity>
         </View>
         {loading ? <ActivityIndicator color={colors.brand} /> : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyRow}>
             {moodHistory.map((entry) => (
-              <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('Moods')}>
+              <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('MainTabs', { screen: 'Mood', params: { hubTab: 'moods' } })}>
                 <Text style={[styles.historyDay, { color: colors.secondary }]}>{dateOnly(entry.date).slice(-2)}</Text>
                 <Text style={styles.historyEmoji}>{moods.find((mood) => mood.label === entry.mood)?.emoji || '🙂'}</Text>
                 <Text style={[styles.historyMood, { color: colors.secondary }]}>{entry.mood}</Text>
@@ -92,11 +93,11 @@ export default function MoodJournalHomeScreen() {
 
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Journal entries</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Journals')}><Text style={[styles.link, { color: colors.brand }]}>See all</Text></TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.navigate('MainTabs', { screen: 'Mood', params: { hubTab: 'journal' } })}><Text style={[styles.link, { color: colors.brand }]}>See all</Text></TouchableOpacity>
         </View>
         <View style={styles.entries}>
           {journalEntries.map((entry) => (
-            <TouchableOpacity key={entry._id} style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Journals')}>
+            <TouchableOpacity key={entry._id} style={[styles.entry, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('MainTabs', { screen: 'Mood', params: { hubTab: 'journal' } })}>
               <Text style={[styles.entryMeta, { color: colors.secondary }]}>{dateOnly(entry.date)}{entry.mood ? ` · ${entry.mood}` : ''}</Text>
               <Text style={[styles.entryTitle, { color: colors.text }]}>{entry.title || 'Untitled entry'}</Text>
               <Text style={[styles.entryBody, { color: colors.secondary }]} numberOfLines={2}>{entry.body}</Text>
