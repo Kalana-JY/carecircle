@@ -1,47 +1,88 @@
 const Resource = require('../models/MentalHealthResource');
 const User = require('../models/User');
 
+const handleError = (res, error) => {
+  if (error.name === 'ValidationError' || error.name === 'CastError') {
+    return res.status(400).json({ message: 'Invalid resource input' });
+  }
+  console.error(error);
+  return res.status(500).json({ message: 'Server error' });
+};
+
+const getResourceType = (body) => body.resourceType || body.type || 'article';
+
+const buildResourceData = (body, userId) => ({
+  title: body.title,
+  description: body.description,
+  url: body.url,
+  content: body.content,
+  resourceType: getResourceType(body),
+  type: getResourceType(body),
+  category: body.category,
+  topics: body.topics,
+  tags: body.tags,
+  author: body.author,
+  publisher: body.publisher,
+  thumbnailUrl: body.thumbnailUrl,
+  durationMinutes: body.durationMinutes,
+  language: body.language,
+  isPublished: body.isPublished,
+  publishedAt: body.publishedAt,
+  steps: body.steps,
+  phone: body.phone,
+  address: body.address,
+  services: body.services,
+  availability: body.availability,
+  isEmergency: body.isEmergency,
+  location: body.location,
+  createdBy: userId,
+});
+
 // Create a new resource
 const createResource = async (req, res) => {
   try {
-    const data = req.body;
-    if (req.user) data.createdBy = req.user._id;
-
-    const resource = await Resource.create(data);
+    const resource = await Resource.create(buildResourceData(req.body, req.user && req.user._id));
     return res.status(201).json(resource);
   } catch (error) {
-    console.error('createResource error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return handleError(res, error);
   }
 };
 
 // Get resources with optional filters and search
 const getResources = async (req, res) => {
   try {
-    const { category, topic, type, q, page = 1, limit = 50, sortBy } = req.query;
+    const { category, topic, type, resourceType, q, page = 1, limit = 50, sortBy, published } = req.query;
     const filter = {};
     if (category) filter.category = category;
     if (topic) filter.topics = topic;
-    if (type) filter.type = type;
+    if (type || resourceType) filter.resourceType = resourceType || type;
+    if (published !== undefined) filter.isPublished = published !== 'false';
+
+    const pageNumber = Math.max(Number.parseInt(page, 10) || 1, 1);
+    const pageSize = Math.min(Math.max(Number.parseInt(limit, 10) || 50, 1), 100);
 
     let query = Resource.find(filter);
 
     if (q) {
-      // use text search if index exists, otherwise fallback to regex on title/description
-      query = Resource.find({ $text: { $search: q }, ...filter });
+      query = Resource.find({ ...filter, $text: { $search: q } });
     }
 
     // sorting
-    if (sortBy === 'rating') query = query.sort({ averageRating: -1 });
-    else query = query.sort({ createdAt: -1 });
+    if (sortBy === 'rating') query = query.sort({ averageRating: -1, createdAt: -1 });
+    else if (sortBy === 'title') query = query.sort({ title: 1 });
+    else query = query.sort({ publishedAt: -1, createdAt: -1 });
 
-    const skip = (Number(page) - 1) * Number(limit);
-    const resources = await query.skip(skip).limit(Number(limit)).exec();
+    const skip = (pageNumber - 1) * pageSize;
+    const resources = await query.skip(skip).limit(pageSize).exec();
     return res.status(200).json(resources);
   } catch (error) {
-    console.error('getResources error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return handleError(res, error);
   }
+};
+
+const getCrisisResources = async (req, res) => {
+  req.query.resourceType = 'crisis-support';
+  return getResources(req, res);
 };
 
 // Get a single resource by id
@@ -51,8 +92,7 @@ const getResourceById = async (req, res) => {
     if (!resource) return res.status(404).json({ message: 'Resource not found' });
     return res.status(200).json(resource);
   } catch (error) {
-    console.error('getResourceById error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return handleError(res, error);
   }
 };
 
@@ -66,12 +106,11 @@ const updateResource = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    Object.assign(resource, req.body);
+    Object.assign(resource, buildResourceData({ ...resource.toObject(), ...req.body }, resource.createdBy));
     await resource.save();
     return res.status(200).json(resource);
   } catch (error) {
-    console.error('updateResource error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return handleError(res, error);
   }
 };
 
@@ -85,11 +124,10 @@ const deleteResource = async (req, res) => {
       return res.status(403).json({ message: 'Forbidden' });
     }
 
-    await resource.remove();
+    await resource.deleteOne();
     return res.status(200).json({ message: 'Resource deleted' });
   } catch (error) {
-    console.error('deleteResource error:', error);
-    return res.status(500).json({ message: 'Server error' });
+    return handleError(res, error);
   }
 };
 
@@ -236,6 +274,7 @@ const getRecommendations = async (req, res) => {
 module.exports = {
   createResource,
   getResources,
+  getCrisisResources,
   getResourceById,
   updateResource,
   deleteResource,
@@ -246,3 +285,4 @@ module.exports = {
   shareResource,
   getRecommendations,
 };
+//
