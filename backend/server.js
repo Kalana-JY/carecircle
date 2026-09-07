@@ -11,6 +11,7 @@ const resourceRoutes = require("./src/routes/resourceRoutes");
 const wellnessActivityRoutes = require("./src/routes/wellnessActivityRoutes");
 const goalRoutes = require("./src/routes/goalRoutes");
 const sessionRoutes = require("./src/routes/sessionRoutes");
+const crisisSupportRoutes = require("./src/routes/crisisSupportRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -31,7 +32,15 @@ const mount = (path, router) => {
 };
 
 // Routes
-
+mount('/api/auth', authRoutes);
+mount('/api/moods', moodRoutes);
+mount('/api/journals', journalRoutes);
+mount('/api/forum', forumRoutes);
+mount('/api/peer-supporters', peerSupporterRoutes);
+mount('/api/resources', resourceRoutes);
+mount('/api/wellness-activities', wellnessActivityRoutes);
+mount('/api/goals', goalRoutes);
+mount('/api/sessions', sessionRoutes);
 
 app.get("/api/ping-crisis", (req, res) => {
   res.json({ ok: true, route: "crisis-ping" });
@@ -47,6 +56,6 @@ app.get("/api/crisis-support", (req, res, next) => {
   return crisisSupportRoutes(req, res, next);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`CareCircle API listening on http://localhost:${PORT}`);
 });

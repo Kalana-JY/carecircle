@@ -6,18 +6,6 @@ import { ActivityIndicator, View } from 'react-native';
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
 
-const CareTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: '#3A7CA5',
-    background: '#F4F7FB',
-    card: '#FFFFFF',
-    text: '#1C242C',
-    border: '#E7ECF1',
-    notification: '#3A7CA5',
-  },
-};
 
 const CareTheme = {
   ...DefaultTheme,
