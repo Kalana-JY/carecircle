@@ -7,19 +7,19 @@ const IS_PHYSICAL_DEVICE = false;
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000
- * - Android Emulator: http://10.0.2.2:5000 (direct host loopback, bypasses firewall)
- * - iOS Simulator: http://localhost:5000
+ * - Web: http://localhost:5001
+ * - Android Emulator: http://10.0.2.2:5001 (direct host loopback, bypasses firewall)
+ * - iOS Simulator: http://localhost:5001
  * - Physical Device: Expo hostUri IP address
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'web') {
-    return 'http://localhost:5000';
+    return 'http://localhost:5001';
   }
 
   // Prioritize emulator loopback for Android
   if (Platform.OS === 'android' && !IS_PHYSICAL_DEVICE) {
-    return 'http://10.0.2.2:5000';
+    return 'http://10.0.2.2:5001';
   }
 
   // Use Metro bundler IP address for physical devices
@@ -27,11 +27,11 @@ const getBaseUrl = (): string => {
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) {
-      return `http://${ip}:5000`;
+    return `http://${ip}:5001`;
     }
   }
 
-  return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+  return Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://localhost:5001';
 };
 
 export const API_URL = getBaseUrl();
@@ -77,7 +77,8 @@ export async function apiFetch<T = any>(path: string, options: ApiFetchOptions =
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
+    const validationMessage = Array.isArray(data.errors) ? data.errors[0]?.msg : undefined;
+    throw new Error(data.message || validationMessage || `Request failed (${response.status})`);
   }
   return data as T;
 }

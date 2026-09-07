@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+
 import { useAuth } from '../../store/AuthContext';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { Colors } from '../../constants/theme';
@@ -76,6 +77,7 @@ interface SupporterApplicationItem {
 
 export default function AdminDashboard() {
   const { user, signOut } = useAuth();
+  const navigation = useNavigation();
   const isDark = useColorScheme() === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
 
@@ -491,7 +493,7 @@ export default function AdminDashboard() {
       {/* Top Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
+
           <Text style={[styles.headerTitle, { color: colors.text }]}>CareCircle Admin</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={signOut}>

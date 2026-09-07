@@ -30,6 +30,23 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'MentalHealthResource',
   }],
+  interests: [{
+    type: String,
+    trim: true,
+  }],
+  resourceViews: [{
+    resource: { type: mongoose.Schema.Types.ObjectId, ref: 'MentalHealthResource' },
+    viewedAt: { type: Date, default: Date.now },
+  }],
+  savedCrisisContacts: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CrisisSupportEntry',
+  }],
+  personalCrisisContacts: [{
+    name: { type: String, required: true, trim: true },
+    phone: { type: String, required: true, trim: true },
+    relationship: { type: String, trim: true, default: '' },
+  }],
 }, {
   timestamps: true,
 });

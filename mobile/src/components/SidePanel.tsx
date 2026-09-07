@@ -118,6 +118,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               <Ionicons name="shield-checkmark" size={20} color={colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
             </TouchableOpacity>
+
           </ScrollView>
 
           {/* Footer (Sign Out) */}

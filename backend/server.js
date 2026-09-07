@@ -1,4 +1,4 @@
-require("dotenv").config();
+require("dotenv").config(); // local admin credentials load from .env
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./src/config/db");
@@ -22,23 +22,31 @@ connectDB();
 app.use(cors());
 app.use(express.json());
 
+// Express 5 leaves req.url empty when the request path equals the mount path
+const mount = (path, router) => {
+  app.use(path, (req, _res, next) => {
+    if (!req.url || req.url === "") req.url = "/";
+    next();
+  }, router);
+};
+
 // Routes
-app.use("/api/auth", authRoutes);
-app.use("/api/moods", moodRoutes);
-app.use("/api/journals", journalRoutes);
-app.use("/api/forum", forumRoutes);
-app.use("/api/peer-supporters", peerSupporterRoutes);
-app.use("/api/resources", resourceRoutes);
-app.use("/api/wellness-activities", wellnessActivityRoutes);
-app.use("/api/goals", goalRoutes);
-app.use("/api/sessions", sessionRoutes);
 
 
-// Base route for health check
-app.get("/", (req, res) => {
-  res.json({ message: "CareCircle API is running" });
+app.get("/api/ping-crisis", (req, res) => {
+  res.json({ ok: true, route: "crisis-ping" });
+});
+
+app.post("/api/crisis-support", (req, res, next) => {
+  req.url = "/";
+  return crisisSupportRoutes(req, res, next);
+});
+
+app.get("/api/crisis-support", (req, res, next) => {
+  req.url = "/";
+  return crisisSupportRoutes(req, res, next);
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`CareCircle API listening on http://localhost:${PORT}`);
 });
