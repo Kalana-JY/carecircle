@@ -96,12 +96,6 @@ const signin = async (req, res) => {
     }
 
     const emailNormalized = email.trim().toLowerCase();
-    const adminEmail = process.env.ADMIN_EMAIL
-      ? process.env.ADMIN_EMAIL.replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '').toLowerCase()
-      : null;
-    const adminPassword = process.env.ADMIN_PASSWORD
-      ? process.env.ADMIN_PASSWORD.replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '')
-      : null;
 
     // Handle Admin login using environment variables
     if (adminEmail && emailNormalized === adminEmail) {
@@ -117,7 +111,7 @@ const signin = async (req, res) => {
         user = await User.create({
           name: 'Admin',
           email: adminEmail,
-          phoneNumber: (process.env.ADMIN_PHONE || '+10000000000').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, ''),
+
           password: hashedPassword,
         });
       } else {

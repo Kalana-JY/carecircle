@@ -20,7 +20,7 @@ import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
-import AdminDashboard from '../screens/admin/AdminDashboard';
+
 import { CustomTabBar } from '../components/CustomTabBar';
 import type { HubTab } from '../components/MoodHubChrome';
 
@@ -44,7 +44,7 @@ export type MainStackParamList = {
   BecomeSupporter: undefined;
   ManageSchedule: undefined;
   BookSession: undefined;
-  AdminDashboard: undefined;
+
   Modal: undefined;
 };
 
@@ -125,11 +125,7 @@ export default function MainNavigator() {
         name="BookSession"
         component={BookSessionScreen}
         options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="AdminDashboard"
-        component={AdminDashboard}
-        options={{ headerShown: false }}
+
       />
       <Stack.Screen
         name="Modal"

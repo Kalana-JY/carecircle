@@ -19,6 +19,19 @@ const CareTheme = {
   },
 };
 
+const CareTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: '#3A7CA5',
+    background: '#F4F7FB',
+    card: '#FFFFFF',
+    text: '#1C242C',
+    border: '#E7ECF1',
+    notification: '#3A7CA5',
+  },
+};
+
 export function AppNavigator() {
   const { user, isLoading } = useAuth();
 
@@ -34,6 +47,7 @@ export function AppNavigator() {
     if (!user) {
       return <AuthNavigator />;
     }
+
 
     return <MainNavigator />;
   };

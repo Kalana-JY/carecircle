@@ -133,8 +133,7 @@ router.delete('/:id', deleteGoal);
 
 router.patch('/:id/complete', completeGoal);
 router.patch('/:id/progress', validateProgress, updateProgress);
-router.post('/:id/progress/entries', validateProgressEntry, logProgressEntry);
-router.patch('/:id/status', validateStatus, updateGoalStatus);
+
 router.post('/:id/milestones', validateMilestone, addMilestone);
 router.patch('/:id/milestones/:milestoneId', completeMilestone);
 

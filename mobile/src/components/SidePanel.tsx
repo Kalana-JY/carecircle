@@ -119,16 +119,6 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
             </TouchableOpacity>
 
-            {user?.isAdmin || user?.email?.toLowerCase().includes('admin') ? (
-              <TouchableOpacity
-                style={styles.menuItem}
-                activeOpacity={0.7}
-                onPress={() => handleNavigation('AdminDashboard')}
-              >
-                <Ionicons name="settings-outline" size={20} color={colors.tint} />
-                <Text style={[styles.menuItemText, { color: colors.text }]}>Admin Dashboard</Text>
-              </TouchableOpacity>
-            ) : null}
           </ScrollView>
 
           {/* Footer (Sign Out) */}

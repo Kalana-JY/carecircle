@@ -65,17 +65,14 @@ const goalSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
-    progressEntries: {
-      type: [progressEntrySchema],
-      default: [],
-    },
+
     deadline: {
       type: Date,
       required: [true, 'Please provide a deadline'],
     },
     status: {
       type: String,
-      enum: GOAL_STATUSES,
+
       default: 'active',
     },
     priority: {

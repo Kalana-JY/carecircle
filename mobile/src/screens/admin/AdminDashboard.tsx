@@ -15,7 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+
 import { useAuth } from '../../store/AuthContext';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { Colors } from '../../constants/theme';
@@ -493,13 +493,7 @@ export default function AdminDashboard() {
       {/* Top Header */}
       <View style={[styles.header, { borderBottomColor: colors.border }]}>
         <View style={styles.headerLeft}>
-          {navigation.canGoBack() ? (
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingRight: 8 }}>
-              <Ionicons name="chevron-back" size={24} color={colors.primary} />
-            </TouchableOpacity>
-          ) : (
-            <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
-          )}
+
           <Text style={[styles.headerTitle, { color: colors.text }]}>CareCircle Admin</Text>
         </View>
         <TouchableOpacity style={styles.logoutButton} onPress={signOut}>

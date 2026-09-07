@@ -11,7 +11,6 @@ const resourceRoutes = require("./src/routes/resourceRoutes");
 const wellnessActivityRoutes = require("./src/routes/wellnessActivityRoutes");
 const goalRoutes = require("./src/routes/goalRoutes");
 const sessionRoutes = require("./src/routes/sessionRoutes");
-const crisisSupportRoutes = require("./src/routes/crisisSupportRoutes");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -32,20 +31,6 @@ const mount = (path, router) => {
 };
 
 // Routes
-// Exact collection paths first — Express 5 does not match /api/foo to router.get('/')
-if (typeof resourceRoutes.registerRoot === "function") resourceRoutes.registerRoot(app);
-if (typeof crisisSupportRoutes.registerRoot === "function") crisisSupportRoutes.registerRoot(app);
-
-mount("/api/auth", authRoutes);
-mount("/api/moods", moodRoutes);
-mount("/api/journals", journalRoutes);
-mount("/api/forum", forumRoutes);
-mount("/api/peer-supporters", peerSupporterRoutes);
-mount("/api/resources", resourceRoutes);
-mount("/api/wellness-activities", wellnessActivityRoutes);
-mount("/api/goals", goalRoutes);
-mount("/api/sessions", sessionRoutes);
-mount("/api/crisis-support", crisisSupportRoutes);
 
 
 app.get("/api/ping-crisis", (req, res) => {
