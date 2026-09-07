@@ -2,6 +2,9 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const adminEmail = String(process.env.ADMIN_EMAIL || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '').toLowerCase();
+const adminPassword = String(process.env.ADMIN_PASSWORD || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '');
+
 // Helper to generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
