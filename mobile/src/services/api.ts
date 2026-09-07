@@ -7,19 +7,19 @@ const IS_PHYSICAL_DEVICE = false;
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000
- * - Android Emulator: http://10.0.2.2:5000 (direct host loopback, bypasses firewall)
- * - iOS Simulator: http://localhost:5000
+ * - Web: http://localhost:5001
+ * - Android Emulator: http://10.0.2.2:5001 (direct host loopback, bypasses firewall)
+ * - iOS Simulator: http://localhost:5001
  * - Physical Device: Expo hostUri IP address
  */
 const getBaseUrl = (): string => {
   if (Platform.OS === 'web') {
-    return 'http://localhost:5000';
+    return 'http://localhost:5001';
   }
 
   // Prioritize emulator loopback for Android
   if (Platform.OS === 'android' && !IS_PHYSICAL_DEVICE) {
-    return 'http://10.0.2.2:5000';
+    return 'http://10.0.2.2:5001';
   }
 
   // Use Metro bundler IP address for physical devices
@@ -27,15 +27,22 @@ const getBaseUrl = (): string => {
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) {
-      return `http://${ip}:5000`;
+    return `http://${ip}:5001`;
     }
   }
 
-  return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+  return Platform.OS === 'android' ? 'http://10.0.2.2:5001' : 'http://localhost:5001';
 };
 
 export const API_URL = getBaseUrl();
 console.log('[API] Base URL configured to:', API_URL);
+
+export const dateOnly = (value?: string | Date | null) => {
+  if (!value) return '';
+  const text = typeof value === 'string' ? value : value.toISOString();
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : text.slice(0, 10);
+};
 
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
@@ -45,7 +52,7 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * Authenticated fetch helper that attaches the stored JWT as a Bearer token
  * and handles JSON serialization + error extraction.
  */
-export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<any> {
+export async function apiFetch<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const session = await tokenStorage.getItem('user_session');
   let token: string | null = null;
   if (session) {
@@ -70,7 +77,103 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
+    const validationMessage = Array.isArray(data.errors) ? data.errors[0]?.msg : undefined;
+    throw new Error(data.message || validationMessage || `Request failed (${response.status})`);
   }
-  return data;
+  return data as T;
 }
+
+export interface MoodEntry {
+  _id: string;
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JournalEntry {
+  _id: string;
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type CollectionResponse<T> = {
+  items: T[];
+  meta: { page: number; limit: number; total: number };
+};
+
+export interface MoodPayload {
+  date: string;
+  mood: string;
+  intensity?: number;
+  notes?: string;
+  activities?: string[];
+  tags?: string[];
+}
+
+export interface JournalPayload {
+  date: string;
+  title?: string;
+  body: string;
+  mood?: string;
+  tags?: string[];
+}
+
+export interface WellnessActivity {
+  _id: string;
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+  logs: { date: string; minutes: number }[];
+}
+
+export interface WellnessActivityPayload {
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+}
+
+export const moodApi = {
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=${limit}`),
+  create: (entry: MoodPayload) =>
+    apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<MoodPayload>) =>
+    apiFetch<MoodEntry>(`/api/moods/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/moods/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const journalApi = {
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=${limit}`),
+  create: (entry: JournalPayload) =>
+    apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
+  update: (id: string, entry: Partial<JournalPayload>) =>
+    apiFetch<JournalEntry>(`/api/journals/${id}`, { method: 'PATCH', body: entry }),
+  remove: async (id: string) => {
+    await apiFetch<void>(`/api/journals/${id}`, { method: 'DELETE' });
+  },
+};
+
+export const wellnessActivityApi = {
+  list: () => apiFetch<{ items: WellnessActivity[]; meta: { total: number } }>('/api/wellness-activities'),
+  create: (activity: WellnessActivityPayload) => apiFetch<WellnessActivity>('/api/wellness-activities', { method: 'POST', body: activity }),
+  update: (id: string, activity: Partial<WellnessActivityPayload>) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}`, { method: 'PATCH', body: activity }),
+  remove: (id: string) => apiFetch<void>(`/api/wellness-activities/${id}`, { method: 'DELETE' }),
+  log: (id: string, date: string, minutes = 0) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}/logs`, { method: 'POST', body: { date, minutes } }),
+};

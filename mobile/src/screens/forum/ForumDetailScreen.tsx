@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,13 @@ import {
   SafeAreaView,
   Alert,
 } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts, Colors } from '@/constants/theme';
 import { apiFetch } from '@/services/api';
-import { ForumPostItem } from '@/constants/forum';
+import { ForumPostItem, ForumComment } from '@/constants/forum';
 import { timeAgo } from '@/services/format';
 import { StatusBadge } from '@/components/status-badge';
 
@@ -34,6 +34,8 @@ export default function ForumDetailScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
 
   const loadPost = useCallback(async () => {
     try {
@@ -46,9 +48,11 @@ export default function ForumDetailScreen() {
     }
   }, [id]);
 
-  useEffect(() => {
-    loadPost();
-  }, [loadPost]);
+  useFocusEffect(
+    useCallback(() => {
+      loadPost();
+    }, [loadPost])
+  );
 
   const submitComment = async () => {
     if (!comment.trim()) return;
@@ -105,6 +109,98 @@ export default function ForumDetailScreen() {
       Alert.alert('Report Comment', 'Report this comment to moderators?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Report', style: 'destructive', onPress: () => reportComment(commentId) },
+      ]);
+    }
+  };
+
+  const handleEdit = () => {
+    navigation.navigate('CreatePost', { post });
+  };
+
+  const handleDelete = () => {
+    const remove = async () => {
+      try {
+        await apiFetch(`/api/forum/${id}`, { method: 'DELETE' });
+        navigation.goBack();
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to delete post');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this post? This action cannot be undone.')) {
+        remove();
+      }
+    } else {
+      Alert.alert('Delete Post', 'Delete this post? This action cannot be undone.', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: remove },
+      ]);
+    }
+  };
+
+  const startCommentEdit = (item: ForumComment) => {
+    setEditingCommentId(item._id);
+    setEditingCommentText(item.content);
+  };
+
+  const cancelCommentEdit = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const saveCommentEdit = async (commentId: string) => {
+    if (!editingCommentText.trim()) return;
+    setIsSubmitting(true);
+    try {
+      const updated = await apiFetch(`/api/forum/${id}/comments/${commentId}`, {
+        method: 'PUT',
+        body: { content: editingCommentText.trim() },
+      });
+      setPost((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: (prev.comments || []).map((c) =>
+                c._id === commentId ? updated : c
+              ),
+            }
+          : prev
+      );
+      cancelCommentEdit();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to update comment');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    const remove = async () => {
+      try {
+        await apiFetch(`/api/forum/${id}/comments/${commentId}`, {
+          method: 'DELETE',
+        });
+        setPost((prev) =>
+          prev
+            ? {
+                ...prev,
+                commentCount: Math.max(prev.commentCount - 1, 0),
+                comments: (prev.comments || []).filter((c) => c._id !== commentId),
+              }
+            : prev
+        );
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to delete comment');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if (window.confirm('Delete this comment?')) {
+        remove();
+      }
+    } else {
+      Alert.alert('Delete Comment', 'Delete this comment?', [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: remove },
       ]);
     }
   };
@@ -186,6 +282,27 @@ export default function ForumDetailScreen() {
             </View>
 
             <Text style={[styles.postContent, { color: colors.text }]}>{post.content}</Text>
+
+            {post.isMine && (
+              <View style={styles.authorActions}>
+                <TouchableOpacity
+                  style={[styles.actionButton, { borderColor: colors.border }]}
+                  onPress={handleEdit}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="create-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.actionButtonText, { color: colors.primary }]}>Edit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, { borderColor: colors.border }]}
+                  onPress={handleDelete}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="trash-outline" size={16} color="#BA1A1A" />
+                  <Text style={[styles.actionButtonText, { color: '#BA1A1A' }]}>Delete</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
 
           {/* Comments */}
@@ -228,19 +345,78 @@ export default function ForumDetailScreen() {
                         {timeAgo(item.createdAt)}
                       </Text>
                     </View>
-                    <StatusBadge status={item.status} />
-                    {item.status === 'approved' && (
-                      <TouchableOpacity
-                        style={styles.reportButton}
-                        onPress={() => handleReport(item._id)}
-                        hitSlop={8}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
-                      </TouchableOpacity>
-                    )}
+                    <View style={styles.commentHeaderRight}>
+                      <StatusBadge status={item.status} />
+                      {item.isMine && (
+                        <View style={styles.commentActions}>
+                          <TouchableOpacity
+                            style={styles.reportButton}
+                            onPress={() => startCommentEdit(item)}
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="create-outline" size={16} color={colors.primary} />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.reportButton}
+                            onPress={() => handleDeleteComment(item._id)}
+                            hitSlop={8}
+                            activeOpacity={0.7}
+                          >
+                            <Ionicons name="trash-outline" size={16} color="#BA1A1A" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                      {item.status === 'approved' && (
+                        <TouchableOpacity
+                          style={styles.reportButton}
+                          onPress={() => handleReport(item._id)}
+                          hitSlop={8}
+                          activeOpacity={0.7}
+                        >
+                          <Ionicons name="flag-outline" size={16} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   </View>
-                  <Text style={[styles.commentContent, { color: colors.text }]}>{item.content}</Text>
+                  {item._id === editingCommentId ? (
+                    <View style={styles.editCommentArea}>
+                      <TextInput
+                        style={[
+                          styles.editCommentInput,
+                          { color: colors.text, borderColor: colors.border, backgroundColor: colors.inputBg },
+                        ]}
+                        value={editingCommentText}
+                        onChangeText={setEditingCommentText}
+                        multiline
+                        maxLength={500}
+                        autoFocus
+                      />
+                      <View style={styles.editCommentActions}>
+                        <TouchableOpacity
+                          style={[styles.editCommentBtn, { backgroundColor: colors.primary }]}
+                          onPress={() => saveCommentEdit(item._id)}
+                          disabled={isSubmitting}
+                          activeOpacity={0.8}
+                        >
+                          {isSubmitting ? (
+                            <ActivityIndicator size="small" color="#FFFFFF" />
+                          ) : (
+                            <Text style={styles.editCommentBtnText}>Save</Text>
+                          )}
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.editCommentBtn, { borderColor: colors.border, borderWidth: 1 }]}
+                          onPress={cancelCommentEdit}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={[styles.editCommentBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={[styles.commentContent, { color: colors.text }]}>{item.content}</Text>
+                  )}
                 </View>
               ))}
             </View>
@@ -392,6 +568,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 24,
   },
+  authorActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 16,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
   commentsHeader: {
     flexDirection: 'row',
     alignItems: 'baseline',
@@ -431,6 +625,47 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
     gap: 8,
+  },
+  commentHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  commentActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  editCommentArea: {
+    marginTop: 4,
+  },
+  editCommentInput: {
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    lineHeight: 20,
+    minHeight: 60,
+    textAlignVertical: 'top',
+  },
+  editCommentActions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 8,
+    justifyContent: 'flex-end',
+  },
+  editCommentBtn: {
+    borderRadius: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 70,
+  },
+  editCommentBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   reportButton: {
     padding: 4,
