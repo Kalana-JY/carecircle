@@ -1,6 +1,26 @@
 const mongoose = require('mongoose');
+const { GOAL_CATEGORIES, GOAL_STATUSES, GOAL_PRIORITIES } = require('../constants/goals');
 
-// Define the Goal schema
+const progressEntrySchema = new mongoose.Schema(
+  {
+    value: {
+      type: Number,
+      required: true,
+      min: [0, 'Progress value cannot be negative'],
+    },
+    note: {
+      type: String,
+      trim: true,
+      maxlength: [500, 'Progress note cannot exceed 500 characters'],
+    },
+    recordedAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: true }
+);
+
 const goalSchema = new mongoose.Schema(
   {
     userId: {
@@ -21,16 +41,19 @@ const goalSchema = new mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ['health', 'fitness', 'mental-health', 'career', 'education', 'personal', 'financial', 'other'],
-      default: 'personal',
+      enum: GOAL_CATEGORIES,
+      required: [true, 'Please provide a goal category'],
     },
     target: {
       type: String,
+      required: [true, 'Please provide a goal target'],
       trim: true,
+      maxlength: [200, 'Target cannot exceed 200 characters'],
     },
     targetValue: {
       type: Number,
       default: null,
+      min: [0, 'Target value cannot be negative'],
     },
     targetUnit: {
       type: String,
@@ -50,6 +73,7 @@ const goalSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
+<<<<<<< HEAD
     completionDates: [{
       type: Date,
       default: undefined,
@@ -67,18 +91,21 @@ const goalSchema = new mongoose.Schema(
         },
       },
     ],
+=======
+
+>>>>>>> origin/main
     deadline: {
       type: Date,
       required: [true, 'Please provide a deadline'],
     },
     status: {
       type: String,
-      enum: ['active', 'in_progress', 'completed', 'overdue', 'paused'],
+
       default: 'active',
     },
     priority: {
       type: String,
-      enum: ['low', 'medium', 'high'],
+      enum: GOAL_PRIORITIES,
       default: 'medium',
     },
     completedDate: {
@@ -107,28 +134,59 @@ const goalSchema = new mongoose.Schema(
   }
 );
 
-// Middleware to update status based on deadline
-goalSchema.pre('save', function (next) {
-  if (this.status !== 'completed' && this.deadline < new Date()) {
-    this.status = 'overdue';
-  }
-  next();
-});
+goalSchema.methods.recordedProgress = function recordedProgress() {
+  return this.progressEntries.reduce((total, entry) => total + entry.value, 0);
+};
 
-// Instance method to mark goal as completed
-goalSchema.methods.markComplete = function () {
+goalSchema.methods.recalculateProgress = function recalculateProgress() {
+  const recorded = this.recordedProgress();
+  if (typeof this.targetValue === 'number' && this.targetValue > 0) {
+    this.progress = Math.min(100, Math.round((recorded / this.targetValue) * 10000) / 100);
+  } else if (this.progressEntries.length > 0) {
+    this.progress = Math.min(100, recorded);
+  }
+
+  if (this.progress >= 100 && this.status !== 'paused') {
+    this.progress = 100;
+    this.status = 'completed';
+    this.completedDate = this.completedDate || new Date();
+  }
+
+  return this;
+};
+
+goalSchema.methods.applyOverdueStatus = function applyOverdueStatus(now = new Date()) {
+  if (this.status === 'completed' || this.status === 'paused') {
+    return this;
+  }
+
+  if (this.deadline && this.deadline < now) {
+    this.status = 'overdue';
+  } else if (this.status === 'overdue') {
+    this.status = 'active';
+  }
+
+  return this;
+};
+
+goalSchema.methods.markComplete = function markComplete() {
   this.status = 'completed';
   this.progress = 100;
   this.completedDate = new Date();
   return this.save();
 };
 
-// Static method to find user's goals by status
-goalSchema.statics.findByStatus = function (userId, status) {
+goalSchema.statics.findByStatus = function findByStatus(userId, status) {
   return this.find({ userId, status });
 };
 
-// Index for faster queries
+goalSchema.pre('save', function applyDerivedFields() {
+  if (this.status !== 'completed' && this.progressEntries && this.progressEntries.length > 0) {
+    this.recalculateProgress();
+  }
+  this.applyOverdueStatus();
+});
+
 goalSchema.index({ userId: 1, status: 1 });
 goalSchema.index({ userId: 1, deadline: 1 });
 

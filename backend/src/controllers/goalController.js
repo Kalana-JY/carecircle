@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 const Goal = require('../models/Goal');
 const { STATUS_QUERY_MAP, USER_GOAL_STATUSES } = require('../constants/goals');
 const {
@@ -14,10 +15,105 @@ const {
   evaluateAchievements,
 } = require('../services/goalTracking');
 
+=======
+const mongoose = require('mongoose');
+const { validationResult } = require('express-validator');
+const Goal = require('../models/Goal');
+const { STATUS_QUERY_MAP, USER_GOAL_STATUSES } = require('../constants/goals');
+
+const handleError = (res, error) => {
+  if (error.name === 'ValidationError' || error.name === 'CastError') {
+    return res.status(400).json({
+      success: false,
+      message: error.message || 'Invalid goal input',
+    });
+  }
+
+  console.error(error);
+  return res.status(500).json({
+    success: false,
+    message: error.message || 'Server error',
+  });
+};
+
+const validationFailed = (req, res) => {
+  const errors = validationResult(req);
+  if (errors.isEmpty()) return false;
+  res.status(400).json({ success: false, errors: errors.array() });
+  return true;
+};
+
+const parseDeadline = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return new Date(`${value}T23:59:59.999Z`);
+  }
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const isFutureDeadline = (date) => date instanceof Date && date.getTime() > Date.now();
+
+const toUserId = (req) => req.user._id;
+
+const invalidId = (res, id) => {
+  if (mongoose.isValidObjectId(id)) return false;
+  res.status(400).json({ success: false, message: 'Invalid goal id' });
+  return true;
+};
+
+const findOwnedGoal = async (req, res) => {
+  if (invalidId(res, req.params.id)) return null;
+
+  const goal = await Goal.findById(req.params.id);
+  if (!goal) {
+    res.status(404).json({ success: false, message: 'Goal not found' });
+    return null;
+  }
+
+  if (goal.userId.toString() !== toUserId(req).toString()) {
+    res.status(403).json({ success: false, message: 'Not authorized to access this goal' });
+    return null;
+  }
+
+  return goal;
+};
+
+const refreshOverdueStatuses = async (userId) => {
+  const now = new Date();
+  await Goal.updateMany(
+    {
+      userId,
+      status: { $nin: ['completed', 'paused', 'overdue'] },
+      deadline: { $lt: now },
+    },
+    { $set: { status: 'overdue' } }
+  );
+  await Goal.updateMany(
+    {
+      userId,
+      status: 'overdue',
+      deadline: { $gte: now },
+    },
+    { $set: { status: 'active' } }
+  );
+};
+
+const goalPayload = (goal) => ({
+  ...goal.toObject(),
+  completionPercentage: goal.progress,
+  recordedProgress: goal.recordedProgress(),
+});
+
+// @desc    Create a new goal
+// @route   POST /api/goals
+// @access  Private
+>>>>>>> origin/main
 exports.createGoal = async (req, res) => {
   try {
     if (validationFailed(req, res)) return;
 
+<<<<<<< HEAD
     const {
       title,
       description,
@@ -31,6 +127,10 @@ exports.createGoal = async (req, res) => {
       tags,
       trackingType,
     } = req.body;
+=======
+    const { title, description, category, target, deadline, priority, targetValue, targetUnit, notes, tags } =
+      req.body;
+>>>>>>> origin/main
 
     const parsedDeadline = parseDeadline(deadline);
     if (!parsedDeadline) {
@@ -48,7 +148,10 @@ exports.createGoal = async (req, res) => {
       target,
       targetValue,
       targetUnit,
+<<<<<<< HEAD
       trackingType: resolveTrackingType({ trackingType, targetUnit }),
+=======
+>>>>>>> origin/main
       deadline: parsedDeadline,
       priority,
       notes,
@@ -56,9 +159,12 @@ exports.createGoal = async (req, res) => {
       status: 'active',
     });
 
+<<<<<<< HEAD
     await recordGoalHistory(goal, 'create');
     await evaluateAchievements(toUserId(req));
 
+=======
+>>>>>>> origin/main
     return res.status(201).json({
       success: true,
       data: goalPayload(goal),
@@ -69,6 +175,12 @@ exports.createGoal = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+// @desc    Get all goals for a user filtered by status
+// @route   GET /api/goals
+// @access  Private
+>>>>>>> origin/main
 exports.getGoals = async (req, res) => {
   try {
     const { status, category, priority, sort } = req.query;
@@ -123,6 +235,12 @@ exports.getGoalById = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+// @desc    Update a goal's details
+// @route   PUT /api/goals/:id
+// @access  Private
+>>>>>>> origin/main
 exports.updateGoal = async (req, res) => {
   try {
     if (validationFailed(req, res)) return;
@@ -130,6 +248,7 @@ exports.updateGoal = async (req, res) => {
     const goal = await findOwnedGoal(req, res);
     if (!goal) return;
 
+<<<<<<< HEAD
     const {
       title,
       description,
@@ -143,6 +262,10 @@ exports.updateGoal = async (req, res) => {
       tags,
       trackingType,
     } = req.body;
+=======
+    const { title, description, category, target, deadline, priority, targetValue, targetUnit, notes, tags } =
+      req.body;
+>>>>>>> origin/main
 
     if (deadline !== undefined) {
       const parsedDeadline = parseDeadline(deadline);
@@ -164,13 +287,19 @@ exports.updateGoal = async (req, res) => {
     if (target !== undefined) goal.target = target;
     if (targetValue !== undefined) goal.targetValue = targetValue;
     if (targetUnit !== undefined) goal.targetUnit = targetUnit;
+<<<<<<< HEAD
     if (trackingType !== undefined) goal.trackingType = trackingType;
+=======
+>>>>>>> origin/main
     if (priority !== undefined) goal.priority = priority;
     if (notes !== undefined) goal.notes = notes;
     if (tags !== undefined) goal.tags = tags;
 
     await goal.save();
+<<<<<<< HEAD
     await recordGoalHistory(goal, 'snapshot');
+=======
+>>>>>>> origin/main
 
     return res.json({
       success: true,
@@ -204,8 +333,11 @@ exports.completeGoal = async (req, res) => {
     if (!goal) return;
 
     const completed = await goal.markComplete();
+<<<<<<< HEAD
     await recordGoalHistory(completed, 'status');
     await evaluateAchievements(toUserId(req));
+=======
+>>>>>>> origin/main
 
     return res.json({
       success: true,
@@ -217,6 +349,12 @@ exports.completeGoal = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
+=======
+// @desc    Update goal progress percentage
+// @route   PATCH /api/goals/:id/progress
+// @access  Private
+>>>>>>> origin/main
 exports.updateProgress = async (req, res) => {
   try {
     if (validationFailed(req, res)) return;
@@ -226,6 +364,144 @@ exports.updateProgress = async (req, res) => {
     if (!goal) return;
 
     goal.progress = Math.min(progress, 100);
+<<<<<<< HEAD
+=======
+    if (goal.progress === 100) {
+      goal.status = 'completed';
+      goal.completedDate = goal.completedDate || new Date();
+    }
+
+    await goal.save();
+
+    return res.json({
+      success: true,
+      data: goalPayload(goal),
+      message: 'Goal progress updated',
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// @desc    Log a progress entry and recalculate completion percentage
+// @route   POST /api/goals/:id/progress/entries
+// @access  Private
+exports.logProgressEntry = async (req, res) => {
+  try {
+    if (validationFailed(req, res)) return;
+
+    const { value, note, recordedAt } = req.body;
+    const amount = typeof value === 'number' ? value : Number(value);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Progress value must be a non-negative number',
+      });
+    }
+
+    const goal = await findOwnedGoal(req, res);
+    if (!goal) return;
+
+    goal.progressEntries.push({
+      value: amount,
+      note,
+      recordedAt: recordedAt ? new Date(recordedAt) : new Date(),
+    });
+    goal.recalculateProgress();
+    await goal.save();
+
+    return res.status(201).json({
+      success: true,
+      data: goalPayload(goal),
+      completionPercentage: goal.progress,
+      message: 'Progress entry logged successfully',
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// @desc    Update goal status (in_progress, completed, paused)
+// @route   PATCH /api/goals/:id/status
+// @access  Private
+exports.updateGoalStatus = async (req, res) => {
+  try {
+    if (validationFailed(req, res)) return;
+
+    const { status } = req.body;
+    if (!USER_GOAL_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Status must be in_progress, completed, or paused',
+      });
+    }
+
+    const goal = await findOwnedGoal(req, res);
+    if (!goal) return;
+
+    goal.status = status;
+    if (status === 'completed') {
+      goal.progress = 100;
+      goal.completedDate = goal.completedDate || new Date();
+    } else {
+      goal.completedDate = null;
+    }
+
+    await goal.save();
+
+    return res.json({
+      success: true,
+      data: goalPayload(goal),
+      message: 'Goal status updated successfully',
+    });
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// @desc    Log a progress entry and recalculate goal completion
+// @route   POST /api/goals/:id/progress/entries
+// @access  Private
+exports.logProgressEntry = async (req, res) => {
+  try {
+    const { value } = req.body;
+
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Progress value must be a non-negative number',
+      });
+    }
+
+    const goal = await Goal.findById(req.params.id);
+
+    if (!goal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Goal not found',
+      });
+    }
+
+    if (goal.userId.toString() !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to update this goal',
+      });
+    }
+
+    if (typeof goal.targetValue !== 'number' || goal.targetValue <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'A positive targetValue is required to log progress',
+      });
+    }
+
+    goal.progressEntries.push({ value });
+    const recordedProgress = goal.progressEntries.reduce((total, entry) => total + entry.value, 0);
+    goal.progress = Math.min((recordedProgress / goal.targetValue) * 100, 100);
+
+>>>>>>> origin/main
     if (goal.progress === 100) {
       goal.status = 'completed';
       goal.completedDate = goal.completedDate || new Date();
@@ -371,7 +647,10 @@ exports.completeMilestone = async (req, res) => {
 
 exports.getGoalStats = async (req, res) => {
   try {
+<<<<<<< HEAD
     const mongoose = require('mongoose');
+=======
+>>>>>>> origin/main
     const userId = toUserId(req);
     await refreshOverdueStatuses(userId);
 

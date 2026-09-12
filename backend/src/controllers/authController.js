@@ -2,6 +2,9 @@ const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const adminEmail = String(process.env.ADMIN_EMAIL || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '').toLowerCase();
+const adminPassword = String(process.env.ADMIN_PASSWORD || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '');
+
 // Helper to generate JWT
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
@@ -33,6 +36,12 @@ const signup = async (req, res) => {
 
     // Normalize email
     const emailNormalized = email.trim().toLowerCase();
+
+    // Prevent signing up with admin email
+    const adminEmail = process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.trim().toLowerCase() : null;
+    if (adminEmail && emailNormalized === adminEmail) {
+      return res.status(400).json({ message: 'Cannot register with this email address' });
+    }
 
     // Check if user exists (by email or phone number)
     const userExists = await User.findOne({
@@ -89,8 +98,48 @@ const signin = async (req, res) => {
       return res.status(400).json({ message: 'Please provide email and password' });
     }
 
-    // Find user
-    const user = await User.findOne({ email: email.trim().toLowerCase() });
+    const emailNormalized = email.trim().toLowerCase();
+
+    // Handle Admin login using environment variables
+    if (adminEmail && emailNormalized === adminEmail) {
+      if (password !== adminPassword) {
+        return res.status(401).json({ message: 'Invalid email or password' });
+      }
+
+      // Find or create admin user in DB so that authMiddleware / protect works
+      let user = await User.findOne({ email: adminEmail });
+      if (!user) {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(adminPassword, salt);
+        user = await User.create({
+          name: 'Admin',
+          email: adminEmail,
+
+          password: hashedPassword,
+        });
+      } else {
+        // Sync password hash in DB if the environment variable password changed
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          const salt = await bcrypt.genSalt(10);
+          const hashedPassword = await bcrypt.hash(adminPassword, salt);
+          user.password = hashedPassword;
+          await user.save();
+        }
+      }
+
+      return res.json({
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phoneNumber: user.phoneNumber,
+        isAdmin: true,
+        token: generateToken(user._id),
+      });
+    }
+
+    // Find normal user
+    const user = await User.findOne({ email: emailNormalized });
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
@@ -106,6 +155,7 @@ const signin = async (req, res) => {
       name: user.name,
       email: user.email,
       phoneNumber: user.phoneNumber,
+      isAdmin: false,
       token: generateToken(user._id),
     });
   } catch (error) {

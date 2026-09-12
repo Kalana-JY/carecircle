@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { tokenStorage } from './storage';
 
 // Set to true if you are testing on a physical phone instead of the emulator
-const IS_PHYSICAL_DEVICE = false;
+const IS_PHYSICAL_DEVICE = true;
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
@@ -27,7 +27,7 @@ const getBaseUrl = (): string => {
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) {
-      return `http://${ip}:5000`;
+    return `http://${ip}:5000`;
     }
   }
 
@@ -37,6 +37,13 @@ const getBaseUrl = (): string => {
 export const API_URL = getBaseUrl();
 console.log('[API] Base URL configured to:', API_URL);
 
+export const dateOnly = (value?: string | Date | null) => {
+  if (!value) return '';
+  const text = typeof value === 'string' ? value : value.toISOString();
+  const match = text.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : text.slice(0, 10);
+};
+
 interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
   body?: unknown;
 }
@@ -45,7 +52,7 @@ interface ApiFetchOptions extends Omit<RequestInit, 'body'> {
  * Authenticated fetch helper that attaches the stored JWT as a Bearer token
  * and handles JSON serialization + error extraction.
  */
-export async function apiFetch(path: string, options: ApiFetchOptions = {}): Promise<any> {
+export async function apiFetch<T = any>(path: string, options: ApiFetchOptions = {}): Promise<T> {
   const session = await tokenStorage.getItem('user_session');
   let token: string | null = null;
   if (session) {
@@ -70,12 +77,16 @@ export async function apiFetch(path: string, options: ApiFetchOptions = {}): Pro
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(data.message || 'Request failed');
+    const validationMessage = Array.isArray(data.errors) ? data.errors[0]?.msg : undefined;
+    throw new Error(data.message || validationMessage || `Request failed (${response.status})`);
   }
-  return data;
+  return data as T;
 }
+<<<<<<< HEAD
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> origin/main
 
 export interface MoodEntry {
   _id: string;
@@ -100,6 +111,7 @@ export interface JournalEntry {
   updatedAt?: string;
 }
 
+<<<<<<< HEAD
 export interface GoalRecord {
   _id: string;
   userId?: string;
@@ -121,6 +133,8 @@ export interface GoalRecord {
   updatedAt?: string;
 }
 
+=======
+>>>>>>> origin/main
 export type CollectionResponse<T> = {
   items: T[];
   meta: { page: number; limit: number; total: number };
@@ -143,8 +157,33 @@ export interface JournalPayload {
   tags?: string[];
 }
 
+<<<<<<< HEAD
 export const moodApi = {
   list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
+=======
+export interface WellnessActivity {
+  _id: string;
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+  logs: { date: string; minutes: number }[];
+}
+
+export interface WellnessActivityPayload {
+  title: string;
+  category: string;
+  date: string;
+  duration: number;
+  notes?: string;
+  targetPerWeek: number;
+}
+
+export const moodApi = {
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=${limit}`),
+>>>>>>> origin/main
   create: (entry: MoodPayload) =>
     apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<MoodPayload>) =>
@@ -155,7 +194,11 @@ export const moodApi = {
 };
 
 export const journalApi = {
+<<<<<<< HEAD
   list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
+=======
+  list: (page = 1, limit = 20) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=${limit}`),
+>>>>>>> origin/main
   create: (entry: JournalPayload) =>
     apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<JournalPayload>) =>
@@ -165,6 +208,7 @@ export const journalApi = {
   },
 };
 
+<<<<<<< HEAD
 export const goalApi = {
   list: () => apiFetch<{ success: boolean; count: number; data: GoalRecord[] }>('/api/goals'),
   getById: (id: string) => apiFetch<{ success: boolean; data: GoalRecord }>(`/api/goals/${id}`),
@@ -180,3 +224,12 @@ export const goalApi = {
     apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/status`, { method: 'PATCH', body: { status } }),
 };
 >>>>>>> Stashed changes
+=======
+export const wellnessActivityApi = {
+  list: () => apiFetch<{ items: WellnessActivity[]; meta: { total: number } }>('/api/wellness-activities'),
+  create: (activity: WellnessActivityPayload) => apiFetch<WellnessActivity>('/api/wellness-activities', { method: 'POST', body: activity }),
+  update: (id: string, activity: Partial<WellnessActivityPayload>) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}`, { method: 'PATCH', body: activity }),
+  remove: (id: string) => apiFetch<void>(`/api/wellness-activities/${id}`, { method: 'DELETE' }),
+  log: (id: string, date: string, minutes = 0) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}/logs`, { method: 'POST', body: { date, minutes } }),
+};
+>>>>>>> origin/main
