@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { GOAL_CATEGORIES, GOAL_STATUSES, GOAL_PRIORITIES } = require('../constants/goals');
+const { GOAL_CATEGORIES, GOAL_STATUSES, GOAL_PRIORITIES, TRACKING_TYPES } = require('../constants/goals');
 
 const progressEntrySchema = new mongoose.Schema(
   {
@@ -59,13 +59,10 @@ const goalSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    reminder: {
-      type: Boolean,
-      default: false,
-    },
-    reminderTime: {
+    trackingType: {
       type: String,
-      default: null,
+      enum: TRACKING_TYPES,
+      default: 'manual',
     },
     progress: {
       type: Number,
@@ -73,34 +70,17 @@ const goalSchema = new mongoose.Schema(
       min: 0,
       max: 100,
     },
-<<<<<<< HEAD
-    completionDates: [{
-      type: Date,
-      default: undefined,
-    }],
-    progressEntries: [
-      {
-        value: {
-          type: Number,
-          required: true,
-          min: 0,
-        },
-        recordedAt: {
-          type: Date,
-          default: Date.now,
-        },
-      },
-    ],
-=======
-
->>>>>>> origin/main
+    progressEntries: {
+      type: [progressEntrySchema],
+      default: [],
+    },
     deadline: {
       type: Date,
       required: [true, 'Please provide a deadline'],
     },
     status: {
       type: String,
-
+      enum: GOAL_STATUSES,
       default: 'active',
     },
     priority: {
@@ -138,12 +118,26 @@ goalSchema.methods.recordedProgress = function recordedProgress() {
   return this.progressEntries.reduce((total, entry) => total + entry.value, 0);
 };
 
+goalSchema.methods.todayRecordedProgress = function todayRecordedProgress(now = new Date()) {
+  const todayKey = now.toISOString().slice(0, 10);
+  return this.progressEntries.reduce((total, entry) => {
+    if (!entry.recordedAt) return total;
+    return entry.recordedAt.toISOString().slice(0, 10) === todayKey ? total + entry.value : total;
+  }, 0);
+};
+
 goalSchema.methods.recalculateProgress = function recalculateProgress() {
-  const recorded = this.recordedProgress();
-  if (typeof this.targetValue === 'number' && this.targetValue > 0) {
-    this.progress = Math.min(100, Math.round((recorded / this.targetValue) * 10000) / 100);
-  } else if (this.progressEntries.length > 0) {
-    this.progress = Math.min(100, recorded);
+  if (this.trackingType === 'steps') {
+    const recorded = this.todayRecordedProgress();
+    const target = typeof this.targetValue === 'number' && this.targetValue > 0 ? this.targetValue : 10000;
+    this.progress = Math.min(100, Math.round((recorded / target) * 10000) / 100);
+  } else {
+    const recorded = this.recordedProgress();
+    if (typeof this.targetValue === 'number' && this.targetValue > 0) {
+      this.progress = Math.min(100, Math.round((recorded / this.targetValue) * 10000) / 100);
+    } else if (this.progressEntries.length > 0) {
+      this.progress = Math.min(100, recorded);
+    }
   }
 
   if (this.progress >= 100 && this.status !== 'paused') {
