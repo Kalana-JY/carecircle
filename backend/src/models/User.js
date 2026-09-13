@@ -47,6 +47,15 @@ const userSchema = new mongoose.Schema({
     phone: { type: String, required: true, trim: true },
     relationship: { type: String, trim: true, default: '' },
   }],
+  stepSensorPermission: {
+    type: String,
+    enum: ['undetermined', 'granted', 'denied'],
+    default: 'undetermined',
+  },
+  stepSensorPermissionAt: {
+    type: Date,
+    default: null,
+  },
 }, {
   timestamps: true,
 });
