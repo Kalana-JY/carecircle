@@ -233,12 +233,17 @@ export default function CommunityScreen() {
           )}
         </>
       ) : (
-        /* Chat Room placeholder — functionality comes later */
         <View style={styles.centerContainer}>
-          <Ionicons name="chatbox-ellipses-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.4 }} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>Chat rooms are on the way</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Soon you&apos;ll be able to connect live with your circles right here.
+          <TouchableOpacity
+            style={[styles.chatEnterBtn, { backgroundColor: colors.brand }]}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Conversations')}
+          >
+            <Ionicons name="chatbox-ellipses-outline" size={22} color="#FFFFFF" />
+            <Text style={styles.chatEnterBtnText}>Open Messages</Text>
+          </TouchableOpacity>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary, marginTop: 16 }]}>
+            Connect live with your circles through direct messages and group chats.
           </Text>
         </View>
       )}
@@ -430,5 +435,18 @@ const styles = StyleSheet.create({
   commentCount: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  chatEnterBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 14,
+  },
+  chatEnterBtnText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });

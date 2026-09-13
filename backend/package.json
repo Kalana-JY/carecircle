@@ -5,7 +5,6 @@
   "main": "server.js",
   "scripts": {
     "dev": "nodemon server.js"
-
   },
   "keywords": [],
   "author": "",
@@ -20,6 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb-memory-server": "^8.11.0",
     "mongoose": "^9.9.1",
-    "nodemon": "^3.1.14"
+    "nodemon": "^3.1.14",
+    "socket.io": "^4.8.3"
   }
 }
