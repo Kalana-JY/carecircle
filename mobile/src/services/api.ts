@@ -82,6 +82,11 @@ export async function apiFetch<T = any>(path: string, options: ApiFetchOptions =
   }
   return data as T;
 }
+<<<<<<< HEAD
+<<<<<<< Updated upstream
+=======
+=======
+>>>>>>> origin/main
 
 export interface MoodEntry {
   _id: string;
@@ -106,6 +111,30 @@ export interface JournalEntry {
   updatedAt?: string;
 }
 
+<<<<<<< HEAD
+export interface GoalRecord {
+  _id: string;
+  userId?: string;
+  title: string;
+  description?: string;
+  category?: string;
+  target?: string;
+  targetValue?: number | null;
+  targetUnit?: string;
+  deadline?: string;
+  notes?: string;
+  reminder?: boolean;
+  reminderTime?: string | null;
+  status?: 'active' | 'completed' | 'paused' | 'overdue' | 'in_progress';
+  progress?: number;
+  completionDates?: string[];
+  tags?: string[];
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+=======
+>>>>>>> origin/main
 export type CollectionResponse<T> = {
   items: T[];
   meta: { page: number; limit: number; total: number };
@@ -128,6 +157,10 @@ export interface JournalPayload {
   tags?: string[];
 }
 
+<<<<<<< HEAD
+export const moodApi = {
+  list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
+=======
 export interface WellnessActivity {
   _id: string;
   title: string;
@@ -150,6 +183,7 @@ export interface WellnessActivityPayload {
 
 export const moodApi = {
   list: (page = 1, limit = 20) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=${limit}`),
+>>>>>>> origin/main
   create: (entry: MoodPayload) =>
     apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<MoodPayload>) =>
@@ -160,7 +194,11 @@ export const moodApi = {
 };
 
 export const journalApi = {
+<<<<<<< HEAD
+  list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
+=======
   list: (page = 1, limit = 20) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=${limit}`),
+>>>>>>> origin/main
   create: (entry: JournalPayload) =>
     apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<JournalPayload>) =>
@@ -170,6 +208,23 @@ export const journalApi = {
   },
 };
 
+<<<<<<< HEAD
+export const goalApi = {
+  list: () => apiFetch<{ success: boolean; count: number; data: GoalRecord[] }>('/api/goals'),
+  getById: (id: string) => apiFetch<{ success: boolean; data: GoalRecord }>(`/api/goals/${id}`),
+  create: (goal: Partial<GoalRecord>) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>('/api/goals', { method: 'POST', body: goal }),
+  update: (id: string, goal: Partial<GoalRecord>) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}`, { method: 'PUT', body: goal }),
+  remove: (id: string) =>
+    apiFetch<{ success: boolean; message: string }>(`/api/goals/${id}`, { method: 'DELETE' }),
+  markTodayDone: (id: string) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/complete-today`, { method: 'POST' }),
+  updateStatus: (id: string, status: string) =>
+    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/status`, { method: 'PATCH', body: { status } }),
+};
+>>>>>>> Stashed changes
+=======
 export const wellnessActivityApi = {
   list: () => apiFetch<{ items: WellnessActivity[]; meta: { total: number } }>('/api/wellness-activities'),
   create: (activity: WellnessActivityPayload) => apiFetch<WellnessActivity>('/api/wellness-activities', { method: 'POST', body: activity }),
@@ -177,3 +232,4 @@ export const wellnessActivityApi = {
   remove: (id: string) => apiFetch<void>(`/api/wellness-activities/${id}`, { method: 'DELETE' }),
   log: (id: string, date: string, minutes = 0) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}/logs`, { method: 'POST', body: { date, minutes } }),
 };
+>>>>>>> origin/main

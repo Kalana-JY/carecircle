@@ -13,6 +13,9 @@ import MoodJournalHomeScreen from '../screens/main/MoodJournalHomeScreen';
 import MoodHubScreen from '../screens/main/MoodHubScreen';
 import WellnessActivitiesScreen from '../screens/main/WellnessActivitiesScreen';
 import GoalsScreen from '../screens/main/GoalsScreen';
+import AddGoalScreen from '../screens/main/AddGoalScreen';
+import AchievementsScreen from '../screens/main/AchievementsScreen';
+import ReportsScreen from '../screens/main/ReportsScreen';
 import ResourcesScreen from '../screens/main/ResourcesScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
@@ -52,7 +55,10 @@ export type MainStackParamList = {
   ChatRoom: { conversationId: string; title: string };
   CreateGroup: undefined;
   UserList: undefined;
-
+  Goals: { refreshKey?: number } | undefined;
+  AddGoal: { goal?: any; mode?: 'create' | 'edit' } | undefined;
+  Achievements: undefined;
+  Reports: undefined;
   Modal: undefined;
 };
 
@@ -152,6 +158,26 @@ export default function MainNavigator() {
       <Stack.Screen
         name="UserList"
         component={UserListScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="AddGoal"
+        component={AddGoalScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Achievements"
+        component={AchievementsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Reports"
+        component={ReportsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
