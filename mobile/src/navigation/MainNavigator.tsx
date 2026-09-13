@@ -20,6 +20,10 @@ import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
+import ConversationsScreen from '../screens/messaging/ConversationsScreen';
+import ChatRoomScreen from '../screens/messaging/ChatRoomScreen';
+import CreateGroupScreen from '../screens/messaging/CreateGroupScreen';
+import UserListScreen from '../screens/messaging/UserListScreen';
 
 import { CustomTabBar } from '../components/CustomTabBar';
 import type { HubTab } from '../components/MoodHubChrome';
@@ -44,6 +48,10 @@ export type MainStackParamList = {
   BecomeSupporter: undefined;
   ManageSchedule: undefined;
   BookSession: undefined;
+  Conversations: undefined;
+  ChatRoom: { conversationId: string; title: string };
+  CreateGroup: undefined;
+  UserList: undefined;
 
   Modal: undefined;
 };
@@ -125,7 +133,26 @@ export default function MainNavigator() {
         name="BookSession"
         component={BookSessionScreen}
         options={{ headerShown: false }}
-
+      />
+      <Stack.Screen
+        name="Conversations"
+        component={ConversationsScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ChatRoom"
+        component={ChatRoomScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="CreateGroup"
+        component={CreateGroupScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="UserList"
+        component={UserListScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="Modal"
