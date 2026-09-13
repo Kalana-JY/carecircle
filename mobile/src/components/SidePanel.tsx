@@ -77,14 +77,9 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
-<<<<<<< HEAD
-              onPress={() => handleNavigation('BookSession')}
-            >
-              <Ionicons name="calendar" size={20} color={colors.primary || colors.tint} />
-=======
               onPress={() => handleNavigation('Mood')}
             >
-              <Ionicons name="happy" size={20} color={colors.tint} />
+              <Ionicons name="happy" size={20} color={colors.primary || colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Mood & Journal</Text>
             </TouchableOpacity>
 
@@ -93,7 +88,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               activeOpacity={0.7}
               onPress={() => handleNavigation('Goals')}
             >
-              <Ionicons name="disc-outline" size={20} color={colors.tint} />
+              <Ionicons name="disc-outline" size={20} color={colors.primary || colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Goals</Text>
             </TouchableOpacity>
 
@@ -102,7 +97,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               activeOpacity={0.7}
               onPress={() => handleNavigation('Resources')}
             >
-              <Ionicons name="document-text-outline" size={20} color={colors.tint} />
+              <Ionicons name="document-text-outline" size={20} color={colors.primary || colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Resources</Text>
             </TouchableOpacity>
 
@@ -111,8 +106,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               activeOpacity={0.7}
               onPress={() => handleNavigation('BookSession')}
             >
-              <Ionicons name="calendar" size={20} color={colors.tint} />
->>>>>>> origin/main
+              <Ionicons name="calendar" size={20} color={colors.primary || colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Sessions</Text>
             </TouchableOpacity>
 
@@ -121,16 +115,10 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               activeOpacity={0.7}
               onPress={() => handleNavigation('BecomeSupporter')}
             >
-<<<<<<< HEAD
               <Ionicons name="shield-checkmark" size={20} color={colors.primary || colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
             </TouchableOpacity>
-=======
-              <Ionicons name="shield-checkmark" size={20} color={colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
-            </TouchableOpacity>
 
->>>>>>> origin/main
           </ScrollView>
 
           {/* Footer (Sign Out) */}
