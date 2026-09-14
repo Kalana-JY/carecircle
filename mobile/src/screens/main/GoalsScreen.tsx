@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/MainNavigator';
 import { goalApi, type GoalRecord } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
+import { SidePanel } from '../../components/SidePanel';
 
 const GIRL_IMAGE = require('../../../assets/images/girl.png');
 const LOGO_IMAGE = require('../../../assets/images/cc_logo.png');
@@ -33,6 +34,7 @@ export default function GoalsScreen() {
   const [goals, setGoals] = useState<GoalRecord[]>([]);
   const [activeFilter, setActiveFilter] = useState<GoalFilter>('all');
   const [loading, setLoading] = useState(false);
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
 
   const fetchGoals = useCallback(async () => {
     try {
@@ -185,7 +187,7 @@ export default function GoalsScreen() {
               <Image source={LOGO_IMAGE} style={styles.logoImage} />
               <Text style={styles.logoText}>CareCircle</Text>
             </View>
-            <TouchableOpacity style={styles.profileButton} onPress={() => navigation.navigate('Profile')} activeOpacity={0.8}>
+            <TouchableOpacity style={styles.profileButton} onPress={() => setIsSidePanelOpen(true)} activeOpacity={0.8}>
               <View style={styles.profileInitials}>
                 <Text style={styles.profileInitialsText}>
                   {user?.name ? user.name.split(' ').map((n: string) => n[0]).join('').toUpperCase() : '?'}
@@ -229,18 +231,16 @@ export default function GoalsScreen() {
 
             <View style={styles.statsRow}>
               <View style={styles.statCard}>
-                <View style={styles.statIconBlue}>
-                  <Ionicons name="radio-button-on" size={22} color="#3979C9" />
-                </View>
-                <Text style={styles.statNumber}>{activeGoalsCount}</Text>
-                <Text style={styles.statLabel}>Active goals</Text>
+                <Text style={styles.statNumber}>{goals.length}</Text>
+                <Text style={styles.statLabel}>Total Goals</Text>
               </View>
               <View style={styles.statCard}>
-                <View style={styles.statIconRed}>
-                  <Ionicons name="flame" size={22} color="#E65B60" />
-                </View>
-                <Text style={styles.statNumber}>12</Text>
-                <Text style={styles.statLabel}>Day streak</Text>
+                <Text style={styles.statNumber}>{goals.filter((g) => g.status === 'completed').length}</Text>
+                <Text style={styles.statLabel}>Completed</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statNumber}>{goals.filter((g) => g.status === 'active' || g.status === 'in_progress').length}</Text>
+                <Text style={styles.statLabel}>In Progress</Text>
               </View>
             </View>
 
@@ -255,6 +255,7 @@ export default function GoalsScreen() {
           </ScrollView>
         </View>
       </View>
+      <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -263,7 +264,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   screen: { flex: 1, backgroundColor: '#F7F8FA' },
   hero: { height: 280, position: 'relative', overflow: 'hidden', backgroundColor: '#E8D7C3' },
-  heroBackground: { ...StyleSheet.absoluteFillObject, backgroundColor: 'transparent' },
+  heroBackground: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'transparent' },
   girlImage: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, width: '100%', height: '100%' },
   topBar: { position: 'absolute', top: 14, left: 18, right: 18, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', zIndex: 20 },
   logoContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 255, 255, 0.15)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 6 },

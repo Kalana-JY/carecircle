@@ -63,7 +63,7 @@ export default function ChatRoomScreen() {
   const [isTyping, setIsTyping] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const flatListRef = useRef<FlatList>(null);
-  const typingTimeout = useRef<NodeJS.Timeout | null>(null);
+  const typingTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cleanupFnsRef = useRef<(() => void)[]>([]);
   const mountedRef = useRef(true);
 

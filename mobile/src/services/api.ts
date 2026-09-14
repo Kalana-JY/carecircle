@@ -3,7 +3,7 @@ import Constants from 'expo-constants';
 import { tokenStorage } from './storage';
 
 // Set to true if you are testing on a physical phone instead of the emulator
-const IS_PHYSICAL_DEVICE = true;
+const IS_PHYSICAL_DEVICE = false;
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.

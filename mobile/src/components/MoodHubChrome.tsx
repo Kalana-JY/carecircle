@@ -119,7 +119,11 @@ const styles = StyleSheet.create({
     borderRadius: 22,
   },
   heroScrim: {
-    ...StyleSheet.absoluteFillObject,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(20, 24, 32, 0.18)',
     borderRadius: 22,
   },
