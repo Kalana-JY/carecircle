@@ -13,6 +13,7 @@ import {
   ScrollView,
   Platform,
   KeyboardAvoidingView,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,8 +41,10 @@ export default function ManageScheduleScreen() {
 
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingSession, setEditingSession] = useState<any | null>(null);
+  const [selectedMember, setSelectedMember] = useState<string | null>(null);
 
   // Form states
   const [title, setTitle] = useState<string>('');
@@ -65,8 +68,14 @@ export default function ManageScheduleScreen() {
       Alert.alert('Error', err.message || 'Failed to load schedule.');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchSchedule();
+  }, [fetchSchedule]);
 
   useEffect(() => {
     fetchSchedule();
@@ -291,14 +300,14 @@ export default function ManageScheduleScreen() {
         )}
 
         {isBooked && item.userId && (
-          <View style={[styles.clientBox, { backgroundColor: colors.background, borderColor: colors.border }]}>
-            <Text style={[styles.clientHeader, { color: colors.text }]}>Booked Member Details:</Text>
-            <Text style={[styles.clientText, { color: colors.textSecondary }]}>Name: {item.userId.name}</Text>
-            <Text style={[styles.clientText, { color: colors.textSecondary }]}>Email: {item.userId.email}</Text>
-            {item.userId.phoneNumber ? (
-              <Text style={[styles.clientText, { color: colors.textSecondary }]}>Phone: {item.userId.phoneNumber}</Text>
-            ) : null}
-          </View>
+          <TouchableOpacity
+            style={[styles.viewMemberBtn, { backgroundColor: colors.brandLight, borderColor: colors.brand }]}
+            onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="person-outline" size={14} color={colors.brand} />
+            <Text style={[styles.viewMemberBtnText, { color: colors.brand }]}>View Booked Member</Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.actionRow}>
@@ -353,7 +362,7 @@ export default function ManageScheduleScreen() {
         </TouchableOpacity>
       </View>
 
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.brand} />
         </View>
@@ -372,6 +381,9 @@ export default function ManageScheduleScreen() {
           renderItem={renderSessionItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
+          }
         />
       )}
 
@@ -554,6 +566,34 @@ export default function ManageScheduleScreen() {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      {/* Booked Member Name Modal */}
+      <Modal
+        visible={!!selectedMember}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setSelectedMember(null)}
+      >
+        <View style={styles.memberModalOverlay}>
+          <View style={[styles.memberModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <View style={[styles.memberAvatarCircle, { backgroundColor: colors.brandLight }]}>
+              <Ionicons name="person" size={28} color={colors.brand} />
+            </View>
+            <Text style={[styles.memberModalHeading, { color: colors.textSecondary }]}>Booked Member</Text>
+            <Text style={[styles.memberModalName, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+              {selectedMember}
+            </Text>
+
+            <TouchableOpacity
+              style={[styles.memberModalCloseBtn, { backgroundColor: colors.brand }]}
+              onPress={() => setSelectedMember(null)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.memberModalCloseBtnText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -666,20 +706,79 @@ const styles = StyleSheet.create({
   metaText: {
     fontSize: 13,
   },
-  clientBox: {
+  viewMemberBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
     borderWidth: 1,
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-    gap: 2,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    marginTop: 10,
   },
-  clientHeader: {
+  viewMemberBtnText: {
     fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontWeight: '600',
   },
-  clientText: {
+  memberModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  memberModalCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 12,
+      },
+      android: {
+        elevation: 8,
+      },
+    }),
+  },
+  memberAvatarCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  memberModalHeading: {
     fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  memberModalName: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  memberModalCloseBtn: {
+    width: '100%',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberModalCloseBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
   actionRow: {
     flexDirection: 'row',

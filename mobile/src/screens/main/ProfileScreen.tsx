@@ -5,11 +5,8 @@ import {
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
-  ActivityIndicator,
   ScrollView,
   Platform,
-  Alert,
-  Linking,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -90,60 +87,6 @@ export default function ProfileScreen() {
     }, [fetchApplicationStatus, fetchBookings])
   );
 
-  const handleCancelBooking = async (sessionId: string) => {
-    const cancelAction = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/sessions/${sessionId}/cancel`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-          },
-        });
-        const data = await response.json();
-        if (response.ok) {
-          if (Platform.OS === 'web') {
-            window.alert('Booking cancelled successfully.');
-          } else {
-            Alert.alert('Success', 'Booking cancelled successfully.');
-          }
-          fetchBookings();
-        } else {
-          if (Platform.OS === 'web') {
-            window.alert(data.message || 'Failed to cancel booking.');
-          } else {
-            Alert.alert('Error', data.message || 'Failed to cancel booking.');
-          }
-        }
-      } catch (err) {
-        console.error('[Profile] Cancel error:', err);
-        if (Platform.OS === 'web') {
-          window.alert('Server error. Please try again later.');
-        } else {
-          Alert.alert('Error', 'Server error. Please try again later.');
-        }
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to cancel this support session booking?')) {
-        cancelAction();
-      }
-    } else {
-      Alert.alert(
-        'Cancel Booking',
-        'Are you sure you want to cancel this support session booking?',
-        [
-          { text: 'No', style: 'cancel' },
-          {
-            text: 'Yes, Cancel',
-            style: 'destructive',
-            onPress: cancelAction,
-          },
-        ]
-      );
-    }
-  };
-
   const getInitials = (name?: string) => {
     if (!name) return 'U';
     return name
@@ -215,172 +158,61 @@ export default function ProfileScreen() {
           <Text style={[styles.phone, { color: colors.textSecondary }]}>{user?.phoneNumber || 'No phone number'}</Text>
         </View>
 
-        {/* Peer Supporter Block */}
-        {appStatus !== 'none' && (
-          <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Peer Supporter Status</Text>
-
-            {loading ? (
-              <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
-            ) : (
-              <View style={styles.statusContent}>
-                {appStatus === 'pending' && (
-                  <View style={[styles.statusBox, { backgroundColor: colors.brandLight + '30', borderColor: colors.accentOrange }]}>
-                    <Ionicons name="time-outline" size={24} color={colors.accentOrange} />
-                    <View style={styles.statusTextContainer}>
-                      <Text style={[styles.statusTitle, { color: colors.text }]}>Application Pending</Text>
-                      <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                        Your application is currently under review by our admin team.
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
-                {appStatus === 'approved' && (
-                  <View>
-                    <View style={[styles.statusBox, { backgroundColor: colors.accentGreen + '1A', borderColor: colors.accentGreen }]}>
-                      <Ionicons name="checkmark-circle-outline" size={24} color={colors.accentGreen} />
-                      <View style={styles.statusTextContainer}>
-                        <Text style={[styles.statusTitle, { color: colors.text }]}>Approved Supporter</Text>
-                        <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                          Congratulations! You are certified to host support sessions.
-                        </Text>
-                      </View>
-                    </View>
-                    <TouchableOpacity
-                      style={[styles.actionBtn, { backgroundColor: colors.brand, marginTop: 12 }]}
-                      onPress={() => navigation.navigate('ManageSchedule')}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.actionBtnText}>Host & Manage Sessions</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {appStatus === 'rejected' && (
-                  <View>
-                    <View style={[styles.statusBox, { backgroundColor: colors.accentRed + '10', borderColor: colors.accentRed }]}>
-                      <Ionicons name="close-circle-outline" size={24} color={colors.accentRed} />
-                      <View style={styles.statusTextContainer}>
-                        <Text style={[styles.statusTitle, { color: colors.text }]}>Application Rejected</Text>
-                        <Text style={[styles.statusDescription, { color: colors.textSecondary }]}>
-                          Your application was not approved by administration at this time. You can re-apply via the Side Panel menu.
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-        )}
-
-        {/* Booked Sessions */}
-        <View style={[styles.sectionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>My Booked Support Sessions</Text>
-          {loadingBookings ? (
-            <ActivityIndicator size="small" color={colors.brand} style={{ marginVertical: 20 }} />
-          ) : bookings.length === 0 ? (
-            <Text style={[styles.descriptionText, { color: colors.textSecondary }]}>
-              You have no active support sessions scheduled. Browse sessions in the Explore section to connect with a peer supporter.
-            </Text>
-          ) : (
-            bookings.map((item) => (
-              <View key={item._id} style={[styles.bookingItem, { borderColor: colors.border }]}>
-                <View style={styles.bookingHeader}>
-                  <Text style={[styles.bookingTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-                  <View style={[styles.bookingBadge, { backgroundColor: item.status === 'cancelled' ? colors.accentRed + '15' : colors.accentGreen + '15', borderColor: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen }]}>
-                    <Text style={[styles.bookingBadgeText, { color: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen }]}>
-                      {item.status.toUpperCase()}
-                    </Text>
-                  </View>
+        {/* Menu Section Card */}
+        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* Manage Sessions (only for approved Peer Supporters) */}
+          {appStatus === 'approved' && (
+            <>
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => navigation.navigate('ManageSchedule')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuLeft}>
+                  <Ionicons name="calendar-outline" size={22} color={colors.text} />
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>Manage Sessions</Text>
                 </View>
-                {item.description ? (
-                  <Text style={[styles.bookingDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
-                ) : null}
-                <View style={styles.bookingMetaRow}>
-                  <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
-                    Host: {item.supporterId?.name || 'Peer Supporter'}
-                  </Text>
-                </View>
-                <View style={styles.bookingMetaRow}>
-                  <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]}>
-                    {new Date(item.startTime).toLocaleDateString([], {
-                      weekday: 'short',
-                      month: 'short',
-                      day: 'numeric',
-                    })}{' '}
-                    at{' '}
-                    {new Date(item.startTime).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}{' '}
-                    -{' '}
-                    {new Date(item.endTime).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </Text>
-                </View>
-                {item.sessionType === 'physical' ? (
-                  <View style={styles.bookingMetaRow}>
-                    <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]} numberOfLines={1}>
-                      Venue: {item.venue || 'N/A'}
-                    </Text>
-                  </View>
-                ) : (
-                  <View>
-                    <View style={styles.bookingMetaRow}>
-                      <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
-                      <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]}>
-                        Online Session (Jitsi)
-                      </Text>
-                    </View>
-                    {item.meetingLink ? (
-                      <TouchableOpacity
-                        style={[styles.joinBtn, { backgroundColor: colors.brand, marginTop: 6, marginBottom: 8 }]}
-                        onPress={() => {
-                          if (item.meetingLink) {
-                            Linking.openURL(item.meetingLink).catch((err) => {
-                              console.error('Failed to open link:', err);
-                              Alert.alert('Error', 'Could not open meeting link.');
-                            });
-                          }
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="videocam" size={16} color="#FFF" />
-                        <Text style={styles.joinBtnText}>Join Session</Text>
-                      </TouchableOpacity>
-                    ) : null}
-                  </View>
-                )}
-                {item.status !== 'cancelled' && (
-                  <TouchableOpacity
-                    style={[styles.cancelBtn, { borderColor: colors.accentRed }]}
-                    onPress={() => handleCancelBooking(item._id)}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={[styles.cancelBtnText, { color: colors.accentRed }]}>Cancel Booking</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+            </>
           )}
-        </View>
 
-        {/* Logout Button */}
-        <TouchableOpacity
-          style={[styles.logoutBtn, { borderColor: colors.accentRed }]}
-          onPress={signOut}
-          activeOpacity={0.7}
-        >
-          <Ionicons name="log-out-outline" size={20} color={colors.accentRed} />
-          <Text style={[styles.logoutText, { color: colors.accentRed }]}>Sign Out</Text>
-        </TouchableOpacity>
+          {/* Booked Sessions */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('BookedSessions')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="calendar-number-outline" size={22} color={colors.text} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Booked Sessions</Text>
+            </View>
+            <View style={styles.menuRight}>
+              {bookings.length > 0 && (
+                <View style={[styles.badgePill, { backgroundColor: colors.brandLight }]}>
+                  <Text style={[styles.badgePillText, { color: colors.brand }]}>{bookings.length}</Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </View>
+          </TouchableOpacity>
+
+          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+
+          {/* Sign Out */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={signOut}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="log-out-outline" size={22} color={colors.accentRed} />
+              <Text style={[styles.menuTitle, { color: colors.accentRed }]}>Sign Out</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -456,135 +288,49 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  sectionCard: {
+  menuCard: {
     borderRadius: 16,
     borderWidth: 1,
-    padding: 20,
+    overflow: 'hidden',
     marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 2,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  statusContent: {
-    marginTop: 4,
-  },
-  descriptionText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 16,
-  },
-  actionBtn: {
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  statusBox: {
+  menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 16,
-    gap: 12,
-  },
-  statusTextContainer: {
-    flex: 1,
-  },
-  statusTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  statusDescription: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    borderWidth: 1,
-    paddingVertical: 14,
-    gap: 8,
-  },
-  logoutText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  bookingItem: {
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
-  },
-  bookingHeader: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+    paddingVertical: 18,
+    paddingHorizontal: 20,
   },
-  bookingTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
-  },
-  bookingBadge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  bookingBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  bookingDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  bookingMetaRow: {
+  menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
+    gap: 16,
   },
-  bookingMetaText: {
-    fontSize: 13,
-  },
-  cancelBtn: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-  },
-  cancelBtnText: {
-    fontSize: 13,
+  menuTitle: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  joinBtn: {
+  menuRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
     gap: 8,
   },
-  joinBtnText: {
-    color: '#FFF',
-    fontSize: 13,
+  menuDivider: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 20,
+  },
+  badgePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
+  badgePillText: {
+    fontSize: 12,
     fontWeight: '700',
   },
 });

@@ -23,6 +23,7 @@ import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
+import BookedSessionsScreen from '../screens/main/BookedSessionsScreen';
 import ConversationsScreen from '../screens/messaging/ConversationsScreen';
 import ChatRoomScreen from '../screens/messaging/ChatRoomScreen';
 import CreateGroupScreen from '../screens/messaging/CreateGroupScreen';
@@ -47,6 +48,7 @@ export type MainStackParamList = {
   WellnessActivities: undefined;
   Profile: undefined;
   Resources: undefined;
+  BookedSessions: undefined;
   ForumDetail: undefined;
   CreatePost: undefined;
   BecomeSupporter: undefined;
@@ -144,6 +146,11 @@ export default function MainNavigator() {
       <Stack.Screen
         name="BookSession"
         component={BookSessionScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="BookedSessions"
+        component={BookedSessionsScreen}
         options={{ headerShown: false }}
       />
       <Stack.Screen
