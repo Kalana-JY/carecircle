@@ -36,7 +36,7 @@ export type MainTabParamList = {
   Community: undefined;
   Mood: { selectedMood?: string; hubTab?: HubTab } | undefined;
   Goals: undefined;
-  Resources: undefined;
+  Profile: undefined;
 };
 
 export type MainStackParamList = {
@@ -46,6 +46,7 @@ export type MainStackParamList = {
   Journals: undefined;
   WellnessActivities: undefined;
   Profile: undefined;
+  Resources: undefined;
   ForumDetail: undefined;
   CreatePost: undefined;
   BecomeSupporter: undefined;
@@ -77,7 +78,7 @@ function MainTabs() {
       <Tab.Screen name="Community" component={CommunityScreen} options={{ title: 'Community' }} />
       <Tab.Screen name="Mood" component={MoodHubScreen} options={{ title: 'Mood' }} />
       <Tab.Screen name="Goals" component={GoalsScreen} options={{ title: 'Goals' }} />
-      <Tab.Screen name="Resources" component={ResourcesScreen} options={{ title: 'Resources' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );
 }
@@ -134,6 +135,11 @@ export default function MainNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{ title: 'Profile' }}
+      />
+      <Stack.Screen
+        name="Resources"
+        component={ResourcesScreen}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="BookSession"

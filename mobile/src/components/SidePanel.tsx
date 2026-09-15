@@ -20,7 +20,7 @@ interface SidePanelProps {
   onClose: () => void;
 }
 
-const TAB_SCREENS = new Set(['Home', 'Community', 'Mood', 'Goals', 'Resources']);
+const TAB_SCREENS = new Set(['Home', 'Community', 'Mood', 'Goals', 'Profile']);
 
 export function SidePanel({ isOpen, onClose }: SidePanelProps) {
   const { user, signOut } = useAuth();
