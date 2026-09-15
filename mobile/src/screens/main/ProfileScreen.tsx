@@ -154,6 +154,34 @@ export default function ProfileScreen() {
       .substring(0, 2);
   };
 
+  const getStatusBadgeConfig = () => {
+    if (appStatus === 'approved') {
+      return {
+        label: 'Peer Supporter',
+        icon: 'shield-checkmark' as const,
+        bg: isDark ? 'rgba(52, 199, 89, 0.18)' : 'rgba(52, 199, 89, 0.12)',
+        border: isDark ? 'rgba(52, 199, 89, 0.35)' : 'rgba(52, 199, 89, 0.3)',
+        text: isDark ? '#4CD964' : '#1E9E4F',
+      };
+    }
+    if (appStatus === 'pending') {
+      return {
+        label: 'Pending',
+        icon: 'time-outline' as const,
+        bg: isDark ? 'rgba(255, 149, 0, 0.18)' : 'rgba(255, 149, 0, 0.12)',
+        border: isDark ? 'rgba(255, 149, 0, 0.35)' : 'rgba(255, 149, 0, 0.3)',
+        text: isDark ? '#FF9F0A' : '#C77700',
+      };
+    }
+    return {
+      label: 'Member',
+      icon: 'person-outline' as const,
+      bg: isDark ? 'rgba(58, 124, 165, 0.18)' : 'rgba(58, 124, 165, 0.1)',
+      border: isDark ? 'rgba(58, 124, 165, 0.35)' : 'rgba(58, 124, 165, 0.25)',
+      text: colors.brand,
+    };
+  };
+
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
@@ -171,6 +199,17 @@ export default function ProfileScreen() {
               {getInitials(user?.name)}
             </Text>
           </View>
+          {(() => {
+            const badge = getStatusBadgeConfig();
+            return (
+              <View style={[styles.statusBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+                <Ionicons name={badge.icon} size={13} color={badge.text} />
+                <Text style={[styles.statusBadgeText, { color: badge.text }]}>
+                  {badge.label}
+                </Text>
+              </View>
+            );
+          })()}
           <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'Guest User'}</Text>
           <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email associated'}</Text>
           <Text style={[styles.phone, { color: colors.textSecondary }]}>{user?.phoneNumber || 'No phone number'}</Text>
@@ -382,7 +421,22 @@ const styles = StyleSheet.create({
     borderRadius: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   avatarText: {
     fontSize: 26,

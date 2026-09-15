@@ -12,7 +12,7 @@ const ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
   Community: 'people-outline',
   Mood: 'happy-outline',
   Goals: 'disc-outline',
-  Resources: 'document-text-outline',
+  Profile: 'person-outline',
 };
 
 export function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
