@@ -13,8 +13,6 @@ import MoodJournalHomeScreen from '../screens/main/MoodJournalHomeScreen';
 import MoodHubScreen from '../screens/main/MoodHubScreen';
 import WellnessActivitiesScreen from '../screens/main/WellnessActivitiesScreen';
 import GoalsScreen from '../screens/main/GoalsScreen';
-import AddGoalScreen from '../screens/main/AddGoalScreen';
-import AchievementsScreen from '../screens/main/AchievementsScreen';
 import ReportsScreen from '../screens/main/ReportsScreen';
 import ResourcesScreen from '../screens/main/ResourcesScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
@@ -24,10 +22,13 @@ import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
 import BookedSessionsScreen from '../screens/main/BookedSessionsScreen';
+
 import ConversationsScreen from '../screens/messaging/ConversationsScreen';
 import ChatRoomScreen from '../screens/messaging/ChatRoomScreen';
 import CreateGroupScreen from '../screens/messaging/CreateGroupScreen';
 import UserListScreen from '../screens/messaging/UserListScreen';
+
+import AdminDashboard from '../screens/admin/AdminDashboard';
 
 import { CustomTabBar } from '../components/CustomTabBar';
 import type { HubTab } from '../components/MoodHubChrome';
@@ -59,13 +60,13 @@ export type MainStackParamList = {
   CreateGroup: undefined;
   UserList: undefined;
   Goals: { refreshKey?: number } | undefined;
-  AddGoal: { goal?: any; mode?: 'create' | 'edit' } | undefined;
-  Achievements: undefined;
   Reports: undefined;
+  AdminDashboard: undefined;
   Modal: undefined;
 };
 
-export type MainStackNavigationProp = NativeStackNavigationProp<MainStackParamList>;
+export type MainStackNavigationProp =
+  NativeStackNavigationProp<MainStackParamList>;
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -76,11 +77,35 @@ function MainTabs() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Community" component={CommunityScreen} options={{ title: 'Community' }} />
-      <Tab.Screen name="Mood" component={MoodHubScreen} options={{ title: 'Mood' }} />
-      <Tab.Screen name="Goals" component={GoalsScreen} options={{ title: 'Goals' }} />
-      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{ title: 'Home' }}
+      />
+
+      <Tab.Screen
+        name="Community"
+        component={CommunityScreen}
+        options={{ title: 'Community' }}
+      />
+
+      <Tab.Screen
+        name="Mood"
+        component={MoodHubScreen}
+        options={{ title: 'Mood' }}
+      />
+
+      <Tab.Screen
+        name="Goals"
+        component={GoalsScreen}
+        options={{ title: 'Goals' }}
+      />
+
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ title: 'Profile' }}
+      />
     </Tab.Navigator>
   );
 }
@@ -93,110 +118,134 @@ export default function MainNavigator() {
         component={MainTabs}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="Moods"
         component={MoodsScreen}
         options={{ title: 'Mood Journal' }}
       />
+
       <Stack.Screen
         name="MoodJournalHome"
         component={MoodJournalHomeScreen}
         options={{ title: 'Mood & Journal' }}
       />
+
       <Stack.Screen
         name="Journals"
         component={JournalsScreen}
-        options={{ headerShown: false, contentStyle: { backgroundColor: '#F4F7FB' } }}
+        options={{
+          headerShown: false,
+          contentStyle: { backgroundColor: '#F4F7FB' },
+        }}
       />
+
       <Stack.Screen
         name="WellnessActivities"
         component={WellnessActivitiesScreen}
         options={{ title: 'Wellness activities' }}
       />
+
       <Stack.Screen
         name="ForumDetail"
         component={ForumDetailScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="CreatePost"
         component={CreatePostScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="BecomeSupporter"
         component={BecomeSupporterScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="ManageSchedule"
         component={ManageScheduleScreen}
-        options={{ title: 'Manage Support Sessions', headerBackTitle: 'Back' }}
+        options={{
+          title: 'Manage Support Sessions',
+          headerBackTitle: 'Back',
+        }}
       />
+
       <Stack.Screen
         name="Profile"
         component={ProfileScreen}
         options={{ title: 'Profile' }}
       />
+
       <Stack.Screen
         name="Resources"
         component={ResourcesScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="BookSession"
         component={BookSessionScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="BookedSessions"
         component={BookedSessionsScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="Conversations"
         component={ConversationsScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="ChatRoom"
         component={ChatRoomScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="CreateGroup"
         component={CreateGroupScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="UserList"
         component={UserListScreen}
         options={{ headerShown: false }}
       />
+
       <Stack.Screen
         name="Goals"
         component={GoalsScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen
-        name="AddGoal"
-        component={AddGoalScreen}
-        options={{ headerShown: false }}
-      />
-      <Stack.Screen
-        name="Achievements"
-        component={AchievementsScreen}
-        options={{ headerShown: false }}
-      />
+
       <Stack.Screen
         name="Reports"
         component={ReportsScreen}
         options={{ headerShown: false }}
       />
+
+      <Stack.Screen
+        name="AdminDashboard"
+        component={AdminDashboard}
+        options={{ headerShown: false }}
+      />
+
       <Stack.Screen
         name="Modal"
         component={ModalScreen}
-        options={{ presentation: 'modal', title: 'Modal' }}
+        options={{
+          presentation: 'modal',
+          title: 'Modal',
+        }}
       />
     </Stack.Navigator>
   );

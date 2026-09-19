@@ -19,15 +19,16 @@ const achievementSchema = new mongoose.Schema(
     },
     description: {
       type: String,
+      required: true,
       trim: true,
-    },
-    metadata: {
-      type: mongoose.Schema.Types.Mixed,
-      default: {},
     },
     unlockedAt: {
       type: Date,
       default: Date.now,
+    },
+    metadata: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
     },
   },
   { timestamps: true }

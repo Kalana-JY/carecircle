@@ -40,6 +40,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
 
   const handleNavigation = (screenName: string) => {
     onClose();
+
     if (TAB_SCREENS.has(screenName)) {
       navigation.navigate('MainTabs', { screen: screenName });
     } else {
@@ -56,7 +57,6 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
       statusBarTranslucent
     >
       <View style={styles.container}>
-        {/* Semi-transparent Backdrop */}
         <Pressable
           style={styles.backdrop}
           onPress={onClose}
@@ -64,12 +64,10 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
           accessibilityLabel="Close menu backdrop"
         />
 
-        {/* Slide-out Panel Content */}
         <View
           style={[styles.panel, { backgroundColor: colors.card }]}
           onStartShouldSetResponder={() => true}
         >
-          {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.border }]}>
             <TouchableOpacity
               style={styles.closeBtn}
@@ -77,112 +75,240 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               hitSlop={12}
               accessibilityLabel="Close menu"
             >
-              <Ionicons name="close" size={24} color={colors.textSecondary} />
+              <Ionicons
+                name="close"
+                size={24}
+                color={colors.textSecondary}
+              />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.avatar, { backgroundColor: isDark ? '#245B8B' : '#E8F1F9' }]}
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: isDark ? '#245B8B' : '#E8F1F9',
+                },
+              ]}
               onPress={() => handleNavigation('Profile')}
               activeOpacity={0.8}
             >
-              <Text style={[styles.avatarText, { color: isDark ? '#FFFFFF' : '#245B8B' }]}>
+              <Text
+                style={[
+                  styles.avatarText,
+                  {
+                    color: isDark ? '#FFFFFF' : '#245B8B',
+                  },
+                ]}
+              >
                 {getInitials(user?.name)}
               </Text>
             </TouchableOpacity>
 
-            <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.name, { color: colors.text }]}
+              numberOfLines={1}
+            >
               {user?.name || 'Guest User'}
             </Text>
-            <Text style={[styles.email, { color: colors.textSecondary }]} numberOfLines={1}>
+
+            <Text
+              style={[styles.email, { color: colors.textSecondary }]}
+              numberOfLines={1}
+            >
               {user?.email || ''}
             </Text>
           </View>
 
-          {/* Nav Items */}
-          <ScrollView style={styles.menuItems} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            style={styles.menuItems}
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Home */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Home')}
             >
-              <Ionicons name="home-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Home</Text>
+              <Ionicons
+                name="home-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Home
+              </Text>
             </TouchableOpacity>
 
+            {/* Mood */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Mood')}
             >
-              <Ionicons name="happy-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Mood & Journal</Text>
+              <Ionicons
+                name="happy-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Mood & Journal
+              </Text>
             </TouchableOpacity>
 
+            {/* Goals */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Goals')}
             >
-              <Ionicons name="disc-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Goals & Habits</Text>
+              <Ionicons
+                name="disc-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Goals & Habits
+              </Text>
             </TouchableOpacity>
 
+            {/* Community */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Community')}
             >
-              <Ionicons name="chatbubbles-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Community Forum</Text>
+              <Ionicons
+                name="chatbubbles-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Community Forum
+              </Text>
             </TouchableOpacity>
 
+            {/* Resources */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Resources')}
             >
-              <Ionicons name="document-text-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Resources</Text>
+              <Ionicons
+                name="document-text-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Resources
+              </Text>
             </TouchableOpacity>
 
+            {/* Sessions */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('BookSession')}
             >
-              <Ionicons name="calendar-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Book a Session</Text>
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Book a Session
+              </Text>
             </TouchableOpacity>
 
+            {/* Become a Peer Supporter */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('BecomeSupporter')}
             >
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                Become a Peer Supporter
+              </Text>
             </TouchableOpacity>
 
+            {/* My Profile */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
               onPress={() => handleNavigation('Profile')}
             >
-              <Ionicons name="person-outline" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>My Profile</Text>
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={colors.primary || colors.tint}
+              />
+              <Text
+                style={[styles.menuItemText, { color: colors.text }]}
+              >
+                My Profile
+              </Text>
             </TouchableOpacity>
+
+            {/* Admin Dashboard */}
+            {user?.isAdmin ||
+            user?.email?.toLowerCase().includes('admin') ? (
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => handleNavigation('AdminDashboard')}
+              >
+                <Ionicons
+                  name="settings-outline"
+                  size={20}
+                  color={colors.primary || colors.tint}
+                />
+                <Text
+                  style={[
+                    styles.menuItemText,
+                    { color: colors.text },
+                  ]}
+                >
+                  Admin Dashboard
+                </Text>
+              </TouchableOpacity>
+            ) : null}
           </ScrollView>
 
-          {/* Footer (Sign Out) */}
+          {/* Footer */}
           <TouchableOpacity
-            style={[styles.footer, { borderTopColor: colors.border }]}
+            style={[
+              styles.footer,
+              { borderTopColor: colors.border },
+            ]}
             activeOpacity={0.7}
             onPress={() => {
               onClose();
               signOut();
             }}
           >
-            <Ionicons name="log-out-outline" size={20} color="#E53935" />
+            <Ionicons
+              name="log-out-outline"
+              size={20}
+              color="#E53935"
+            />
             <Text style={styles.footerText}>Sign Out</Text>
           </TouchableOpacity>
         </View>
