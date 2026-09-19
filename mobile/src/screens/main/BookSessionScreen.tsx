@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
   ScrollView,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -40,11 +41,13 @@ export default function BookSessionScreen() {
 
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   
   // Search & Filter States
   const [searchText, setSearchText] = useState<string>('');
   const [selectedSupporter, setSelectedSupporter] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<'all' | 'online' | 'physical'>('all');
 
   const fetchAvailableSessions = useCallback(async () => {
     try {
@@ -64,6 +67,12 @@ export default function BookSessionScreen() {
       fetchAvailableSessions();
     }, [fetchAvailableSessions])
   );
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await fetchAvailableSessions();
+    setRefreshing(false);
+  }, [fetchAvailableSessions]);
 
   const handleBookSession = async (session: any) => {
     if (session.supporterId?._id === user?._id) {
@@ -124,14 +133,17 @@ export default function BookSessionScreen() {
 
   // Filter sessions locally
   const filteredSessions = sessions.filter(session => {
-    const titleMatch = (session.title || '').toLowerCase().includes(searchText.toLowerCase());
-    const descMatch = (session.description || '').toLowerCase().includes(searchText.toLowerCase());
-    const hostMatch = (session.supporterId?.name || '').toLowerCase().includes(searchText.toLowerCase());
+    const query = searchText.toLowerCase();
+    const titleMatch = (session.title || '').toLowerCase().includes(query);
+    const descMatch = (session.description || '').toLowerCase().includes(query);
+    const hostMatch = (session.supporterId?.name || '').toLowerCase().includes(query);
+    const venueMatch = (session.venue || '').toLowerCase().includes(query);
     
-    const matchesSearch = titleMatch || descMatch || hostMatch;
+    const matchesSearch = titleMatch || descMatch || hostMatch || venueMatch;
     const matchesSupporter = !selectedSupporter || session.supporterId?._id === selectedSupporter;
+    const matchesType = selectedType === 'all' || (session.sessionType || 'online') === selectedType;
 
-    return matchesSearch && matchesSupporter;
+    return matchesSearch && matchesSupporter && matchesType;
   });
 
   const renderSessionItem = ({ item }: { item: any }) => {
@@ -232,7 +244,7 @@ export default function BookSessionScreen() {
           <Ionicons name="search-outline" size={18} color={colors.textSecondary} style={styles.searchIcon} />
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search by title, description or host..."
+            placeholder="Search by title, description, host or venue..."
             placeholderTextColor={colors.textSecondary}
             value={searchText}
             onChangeText={setSearchText}
@@ -245,41 +257,69 @@ export default function BookSessionScreen() {
         </View>
       </View>
 
-      {/* Filters (Supporters list) */}
-      {uniqueSupporters.length > 0 && (
-        <View style={styles.filterSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            <TouchableOpacity
-              style={[
-                styles.filterPill,
-                !selectedSupporter ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
-              ]}
-              onPress={() => setSelectedSupporter(null)}
-            >
-              <Text style={[styles.filterPillText, { color: !selectedSupporter ? '#FFF' : colors.text }]}>All Hosts</Text>
-            </TouchableOpacity>
+      {/* Format & Host Filters */}
+      <View style={styles.filterSection}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
+          {/* Format Types */}
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              selectedType === 'all' ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+            ]}
+            onPress={() => setSelectedType('all')}
+          >
+            <Text style={[styles.filterPillText, { color: selectedType === 'all' ? '#FFF' : colors.text }]}>All Formats</Text>
+          </TouchableOpacity>
 
-            {uniqueSupporters.map(supporter => {
-              const isSelected = selectedSupporter === supporter.id;
-              return (
-                <TouchableOpacity
-                  key={supporter.id}
-                  style={[
-                    styles.filterPill,
-                    isSelected ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
-                  ]}
-                  onPress={() => setSelectedSupporter(supporter.id)}
-                >
-                  <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : colors.text }]}>{supporter.name}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              selectedType === 'online' ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+            ]}
+            onPress={() => setSelectedType('online')}
+          >
+            <Ionicons name="videocam-outline" size={13} color={selectedType === 'online' ? '#FFF' : colors.text} style={{ marginRight: 4 }} />
+            <Text style={[styles.filterPillText, { color: selectedType === 'online' ? '#FFF' : colors.text }]}>Online</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.filterPill,
+              selectedType === 'physical' ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+            ]}
+            onPress={() => setSelectedType('physical')}
+          >
+            <Ionicons name="location-outline" size={13} color={selectedType === 'physical' ? '#FFF' : colors.text} style={{ marginRight: 4 }} />
+            <Text style={[styles.filterPillText, { color: selectedType === 'physical' ? '#FFF' : colors.text }]}>In-Person</Text>
+          </TouchableOpacity>
+
+          {/* Separator if hosts present */}
+          {uniqueSupporters.length > 0 && (
+            <View style={[styles.filterSeparator, { backgroundColor: colors.border }]} />
+          )}
+
+          {/* Supporter Hosts */}
+          {uniqueSupporters.map(supporter => {
+            const isSelected = selectedSupporter === supporter.id;
+            return (
+              <TouchableOpacity
+                key={supporter.id}
+                style={[
+                  styles.filterPill,
+                  isSelected ? { backgroundColor: colors.brand } : { backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1 }
+                ]}
+                onPress={() => setSelectedSupporter(isSelected ? null : supporter.id)}
+              >
+                <Ionicons name="person-outline" size={13} color={isSelected ? '#FFF' : colors.text} style={{ marginRight: 4 }} />
+                <Text style={[styles.filterPillText, { color: isSelected ? '#FFF' : colors.text }]}>{supporter.name}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
 
       {/* Sessions list */}
-      {loading ? (
+      {loading && !refreshing ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.brand} />
         </View>
@@ -298,6 +338,9 @@ export default function BookSessionScreen() {
           renderItem={renderSessionItem}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
+          }
         />
       )}
     </SafeAreaView>
@@ -361,15 +404,22 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   filterPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 20,
     justifyContent: 'center',
-    alignItems: 'center',
   },
   filterPillText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  filterSeparator: {
+    width: 1,
+    height: 20,
+    alignSelf: 'center',
+    marginHorizontal: 4,
   },
   center: {
     flex: 1,

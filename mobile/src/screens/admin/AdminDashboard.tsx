@@ -15,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 
 import { useAuth } from '../../store/AuthContext';
 import { useColorScheme } from '../../hooks/use-color-scheme';
