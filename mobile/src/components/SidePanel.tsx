@@ -77,11 +77,6 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
-<<<<<<< HEAD
-              onPress={() => handleNavigation('BookSession')}
-            >
-              <Ionicons name="calendar" size={20} color={colors.primary || colors.tint} />
-=======
               onPress={() => handleNavigation('Mood')}
             >
               <Ionicons name="happy" size={20} color={colors.tint} />
@@ -112,7 +107,6 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               onPress={() => handleNavigation('BookSession')}
             >
               <Ionicons name="calendar" size={20} color={colors.tint} />
->>>>>>> origin/main
               <Text style={[styles.menuItemText, { color: colors.text }]}>Sessions</Text>
             </TouchableOpacity>
 
@@ -121,16 +115,20 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               activeOpacity={0.7}
               onPress={() => handleNavigation('BecomeSupporter')}
             >
-<<<<<<< HEAD
-              <Ionicons name="shield-checkmark" size={20} color={colors.primary || colors.tint} />
-              <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
-            </TouchableOpacity>
-=======
               <Ionicons name="shield-checkmark" size={20} color={colors.tint} />
               <Text style={[styles.menuItemText, { color: colors.text }]}>Become a Peer Supporter</Text>
             </TouchableOpacity>
 
->>>>>>> origin/main
+            {user?.isAdmin || user?.email?.toLowerCase().includes('admin') ? (
+              <TouchableOpacity
+                style={styles.menuItem}
+                activeOpacity={0.7}
+                onPress={() => handleNavigation('AdminDashboard')}
+              >
+                <Ionicons name="settings-outline" size={20} color={colors.tint} />
+                <Text style={[styles.menuItemText, { color: colors.text }]}>Admin Dashboard</Text>
+              </TouchableOpacity>
+            ) : null}
           </ScrollView>
 
           {/* Footer (Sign Out) */}

@@ -7,9 +7,9 @@ const IS_PHYSICAL_DEVICE = true;
 
 /**
  * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000
- * - Android Emulator: http://10.0.2.2:5000 (direct host loopback, bypasses firewall)
- * - iOS Simulator: http://localhost:5000
+ * - Web: http://localhost:5001
+ * - Android Emulator: http://10.0.2.2:5001 (direct host loopback, bypasses firewall)
+ * - iOS Simulator: http://localhost:5001
  * - Physical Device: Expo hostUri IP address
  */
 const getBaseUrl = (): string => {
@@ -82,11 +82,6 @@ export async function apiFetch<T = any>(path: string, options: ApiFetchOptions =
   }
   return data as T;
 }
-<<<<<<< HEAD
-<<<<<<< Updated upstream
-=======
-=======
->>>>>>> origin/main
 
 export interface MoodEntry {
   _id: string;
@@ -111,30 +106,6 @@ export interface JournalEntry {
   updatedAt?: string;
 }
 
-<<<<<<< HEAD
-export interface GoalRecord {
-  _id: string;
-  userId?: string;
-  title: string;
-  description?: string;
-  category?: string;
-  target?: string;
-  targetValue?: number | null;
-  targetUnit?: string;
-  deadline?: string;
-  notes?: string;
-  reminder?: boolean;
-  reminderTime?: string | null;
-  status?: 'active' | 'completed' | 'paused' | 'overdue' | 'in_progress';
-  progress?: number;
-  completionDates?: string[];
-  tags?: string[];
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-=======
->>>>>>> origin/main
 export type CollectionResponse<T> = {
   items: T[];
   meta: { page: number; limit: number; total: number };
@@ -157,10 +128,6 @@ export interface JournalPayload {
   tags?: string[];
 }
 
-<<<<<<< HEAD
-export const moodApi = {
-  list: (page = 1) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=20`),
-=======
 export interface WellnessActivity {
   _id: string;
   title: string;
@@ -183,7 +150,6 @@ export interface WellnessActivityPayload {
 
 export const moodApi = {
   list: (page = 1, limit = 20) => apiFetch<CollectionResponse<MoodEntry>>(`/api/moods?page=${page}&limit=${limit}`),
->>>>>>> origin/main
   create: (entry: MoodPayload) =>
     apiFetch<MoodEntry>('/api/moods', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<MoodPayload>) =>
@@ -194,11 +160,7 @@ export const moodApi = {
 };
 
 export const journalApi = {
-<<<<<<< HEAD
-  list: (page = 1) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=20`),
-=======
   list: (page = 1, limit = 20) => apiFetch<CollectionResponse<JournalEntry>>(`/api/journals?page=${page}&limit=${limit}`),
->>>>>>> origin/main
   create: (entry: JournalPayload) =>
     apiFetch<JournalEntry>('/api/journals', { method: 'POST', body: entry }),
   update: (id: string, entry: Partial<JournalPayload>) =>
@@ -208,23 +170,6 @@ export const journalApi = {
   },
 };
 
-<<<<<<< HEAD
-export const goalApi = {
-  list: () => apiFetch<{ success: boolean; count: number; data: GoalRecord[] }>('/api/goals'),
-  getById: (id: string) => apiFetch<{ success: boolean; data: GoalRecord }>(`/api/goals/${id}`),
-  create: (goal: Partial<GoalRecord>) =>
-    apiFetch<{ success: boolean; data: GoalRecord; message: string }>('/api/goals', { method: 'POST', body: goal }),
-  update: (id: string, goal: Partial<GoalRecord>) =>
-    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}`, { method: 'PUT', body: goal }),
-  remove: (id: string) =>
-    apiFetch<{ success: boolean; message: string }>(`/api/goals/${id}`, { method: 'DELETE' }),
-  markTodayDone: (id: string) =>
-    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/complete-today`, { method: 'POST' }),
-  updateStatus: (id: string, status: string) =>
-    apiFetch<{ success: boolean; data: GoalRecord; message: string }>(`/api/goals/${id}/status`, { method: 'PATCH', body: { status } }),
-};
->>>>>>> Stashed changes
-=======
 export const wellnessActivityApi = {
   list: () => apiFetch<{ items: WellnessActivity[]; meta: { total: number } }>('/api/wellness-activities'),
   create: (activity: WellnessActivityPayload) => apiFetch<WellnessActivity>('/api/wellness-activities', { method: 'POST', body: activity }),
@@ -232,4 +177,161 @@ export const wellnessActivityApi = {
   remove: (id: string) => apiFetch<void>(`/api/wellness-activities/${id}`, { method: 'DELETE' }),
   log: (id: string, date: string, minutes = 0) => apiFetch<WellnessActivity>(`/api/wellness-activities/${id}/logs`, { method: 'POST', body: { date, minutes } }),
 };
->>>>>>> origin/main
+
+const getAuthHeaders = async (): Promise<Record<string, string>> => {
+  const session = await tokenStorage.getItem('user_session');
+  let token: string | null = null;
+  if (session) {
+    try {
+      token = JSON.parse(session).token ?? null;
+    } catch {
+      token = null;
+    }
+  }
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+export async function apiFetchText(path: string): Promise<string> {
+  const response = await fetch(`${API_URL}${path}`, { headers: await getAuthHeaders() });
+  const text = await response.text();
+  if (!response.ok) throw new Error('Request failed');
+  return text;
+}
+
+export type GoalStatus = 'active' | 'in_progress' | 'completed' | 'overdue' | 'paused';
+
+export interface GoalItem {
+  _id: string;
+  title: string;
+  description?: string;
+  category?: string;
+  target?: string;
+  targetValue?: number | null;
+  targetUnit?: string;
+  trackingType?: 'manual' | 'steps';
+  progress?: number;
+  recordedProgress?: number;
+  status?: GoalStatus;
+  deadline?: string;
+  notes?: string;
+  progressEntries?: { value: number; note?: string; recordedAt?: string }[];
+}
+
+export interface GoalPayload {
+  title: string;
+  category: string;
+  target: string;
+  deadline: string;
+  targetValue?: number;
+  targetUnit?: string;
+  trackingType?: 'manual' | 'steps';
+  notes?: string;
+  description?: string;
+}
+
+export interface GoalReminder {
+  _id: string;
+  remindAt: string;
+  frequency: 'once' | 'daily' | 'weekly';
+  message?: string;
+  status: 'active' | 'cancelled';
+}
+
+export interface GoalHistoryRow {
+  _id: string;
+  date: string;
+  goalId: string;
+  goalTitle?: string;
+  category?: string;
+  status?: string;
+  progress?: number;
+  recordedProgress?: number;
+  steps?: number | null;
+  source?: string;
+}
+
+export interface GoalDashboard {
+  activeGoals: { count: number; items: GoalItem[] };
+  streaks: { current: number; longest: number };
+  completionRate: number;
+  totals: { total: number; completed: number };
+  todaySteps: { date: string; steps: number; lastRecordedAt?: string | null; dailyTarget: number };
+  upcomingDeadlines: { _id: string; title: string; deadline: string; status: string }[];
+  unreadNotifications: number;
+  recentAchievements: AchievementItem[];
+}
+
+export interface AchievementItem {
+  _id?: string;
+  key: string;
+  title: string;
+  description: string;
+  unlockedAt?: string | null;
+  unlocked?: boolean;
+}
+
+export interface WeeklySummary {
+  start: string;
+  end: string;
+  snapshotCount: number;
+  goalsTracked: number;
+  goalsCompleted: number;
+  averageProgress: number;
+}
+
+export interface WeeklyReport {
+  weekOverWeek: {
+    thisWeek: WeeklySummary;
+    lastWeek: WeeklySummary;
+    progressDelta: number;
+    completedDelta: number;
+  };
+  fourWeekTrend: WeeklySummary[];
+}
+
+type Success<T> = { success: boolean; data: T; message?: string; count?: number };
+
+export const goalApi = {
+  list: (status?: string) =>
+    apiFetch<Success<GoalItem[]>>(`/api/goals${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  get: (id: string) => apiFetch<Success<GoalItem>>(`/api/goals/${id}`),
+  create: (payload: GoalPayload) => apiFetch<Success<GoalItem>>('/api/goals', { method: 'POST', body: payload }),
+  update: (id: string, payload: Partial<GoalPayload>) =>
+    apiFetch<Success<GoalItem>>(`/api/goals/${id}`, { method: 'PUT', body: payload }),
+  remove: (id: string) => apiFetch<Success<unknown>>(`/api/goals/${id}`, { method: 'DELETE' }),
+  logProgress: (id: string, value: number, note?: string) =>
+    apiFetch<Success<GoalItem>>(`/api/goals/${id}/progress/entries`, { method: 'POST', body: { value, note } }),
+  updateStatus: (id: string, status: 'in_progress' | 'completed' | 'paused') =>
+    apiFetch<Success<GoalItem>>(`/api/goals/${id}/status`, { method: 'PATCH', body: { status } }),
+  dashboard: () => apiFetch<Success<GoalDashboard>>('/api/goals/dashboard'),
+  history: (id: string) => apiFetch<Success<GoalHistoryRow[]>>(`/api/goals/${id}/history`),
+  allHistory: () => apiFetch<Success<GoalHistoryRow[]>>('/api/goals/history'),
+  weekly: () => apiFetch<Success<WeeklyReport>>('/api/goals/reports/weekly'),
+  exportCsv: () => apiFetchText('/api/goals/reports/export'),
+  getReminder: (id: string) => apiFetch<Success<GoalReminder>>(`/api/goals/${id}/reminder`),
+  createReminder: (id: string, body: { remindAt: string; frequency?: string; message?: string }) =>
+    apiFetch<Success<GoalReminder>>(`/api/goals/${id}/reminder`, { method: 'POST', body }),
+  updateReminder: (id: string, body: { remindAt?: string; frequency?: string; message?: string }) =>
+    apiFetch<Success<GoalReminder>>(`/api/goals/${id}/reminder`, { method: 'PUT', body }),
+  cancelReminder: (id: string) => apiFetch<Success<GoalReminder>>(`/api/goals/${id}/reminder`, { method: 'DELETE' }),
+};
+
+export const stepApi = {
+  permission: () => apiFetch<Success<{ permission: string; requestedAt?: string | null }>>('/api/steps/permission'),
+  setPermission: (permission: 'granted' | 'denied') =>
+    apiFetch<Success<{ permission: string }>>('/api/steps/permission', { method: 'POST', body: { permission } }),
+  today: () =>
+    apiFetch<Success<{ date: string; steps: number; lastRecordedAt?: string | null; dailyTarget: number; permission: string; live: boolean }>>('/api/steps/today'),
+  sync: (steps: number, source: 'sensor' | 'manual' = 'sensor') =>
+    apiFetch<Success<{ date: string; steps: number; updatedGoals: { _id: string; progress: number; status: string }[] }>>('/api/steps', {
+      method: 'POST',
+      body: { steps, source },
+    }),
+};
+
+export const achievementApi = {
+  list: () => apiFetch<Success<{ unlocked: AchievementItem[]; catalog: AchievementItem[] }>>('/api/achievements'),
+};
