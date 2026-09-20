@@ -20,8 +20,13 @@ import { SidePanel } from '../../components/SidePanel';
 import { MoodCalendarModal } from '../../components/MoodCalendar';
 import { MoodWeekStrip, buildRecentDays } from '../../components/MoodWeekStrip';
 import { dateOnly, journalApi, JournalEntry, moodApi, MoodEntry, wellnessActivityApi, WellnessActivity } from '@/services/api';
-import { tokenStorage } from '@/services/storage';
 import { BRAND, MOODS, entryTimestamp, formatTime, moodEmoji, shortMonth, stampFromDate, todayStamp } from '@/constants/moods';
+import { MoodHistoryPanel } from '../mood/MoodHistoryPanel';
+import { MoodTrendsPanel } from '../mood/MoodTrendsPanel';
+import { MoodPatternsPanel } from '../mood/MoodPatternsPanel';
+import { MoodComparePanel } from '../mood/MoodComparePanel';
+import { MoodReportPanel } from '../mood/MoodReportPanel';
+import { RemindersPanel } from '../mood/RemindersPanel';
 
 const weekStartStamp = () => {
   const date = new Date();
@@ -29,7 +34,15 @@ const weekStartStamp = () => {
   return stampFromDate(date);
 };
 
-type Reminder = { id: string; text: string; done: boolean };
+type InsightTab = 'history' | 'trends' | 'patterns' | 'compare' | 'report';
+
+const INSIGHT_TABS: { key: InsightTab; label: string }[] = [
+  { key: 'history', label: 'History' },
+  { key: 'trends', label: 'Trends' },
+  { key: 'patterns', label: 'Patterns' },
+  { key: 'compare', label: 'Compare' },
+  { key: 'report', label: 'Report' },
+];
 
 export default function MoodHubScreen() {
   const navigation = useNavigation<any>();
@@ -54,8 +67,7 @@ export default function MoodHubScreen() {
   const [activityTarget, setActivityTarget] = useState('7');
   const [activityDuration, setActivityDuration] = useState('10');
 
-  const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [reminderText, setReminderText] = useState('');
+  const [insightTab, setInsightTab] = useState<InsightTab>('history');
   const [showCalendar, setShowCalendar] = useState(false);
   const [editingEntry, setEditingEntry] = useState<{ id: string; source: 'journal' | 'mood'; mood: string; text: string; date: string } | null>(null);
   const [showComposer, setShowComposer] = useState(false);
@@ -63,16 +75,14 @@ export default function MoodHubScreen() {
   const loadAll = useCallback(async () => {
     try {
       setError(null);
-      const [moodsResponse, journalsResponse, wellnessResponse, storedReminders] = await Promise.all([
+      const [moodsResponse, journalsResponse, wellnessResponse] = await Promise.all([
         moodApi.list(1, 100),
         journalApi.list(1, 50),
         wellnessActivityApi.list(),
-        tokenStorage.getItem('wellness_reminders'),
       ]);
       setMoodEntries(moodsResponse.items);
       setJournalEntries(journalsResponse.items);
       setActivities(wellnessResponse.items);
-      if (storedReminders) setReminders(JSON.parse(storedReminders));
     } catch (loadError: any) {
       setError(loadError.message || 'Unable to load your wellness data.');
     }
@@ -88,11 +98,6 @@ export default function MoodHubScreen() {
     if (route.params?.selectedMood) setSelectedMood(route.params.selectedMood);
     if (route.params?.hubTab) setHubTab(route.params.hubTab);
   }, [route.params?.hubTab, route.params?.selectedMood]);
-
-  const persistReminders = async (next: Reminder[]) => {
-    setReminders(next);
-    await tokenStorage.setItem('wellness_reminders', JSON.stringify(next));
-  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -311,7 +316,6 @@ export default function MoodHubScreen() {
       .slice(0, 3);
   }, [journalEntries, moodEntries]);
 
-  const weeklyMoodCount = moodEntries.filter((entry) => dateOnly(entry.date) >= weekStartStamp()).length;
   const weeklyActivityLogs = activities.reduce((sum, activity) => sum + progressFor(activity), 0);
   const weeklyActivityTarget = activities.reduce((sum, activity) => sum + (activity.targetPerWeek || 0), 0);
 
@@ -511,67 +515,51 @@ export default function MoodHubScreen() {
         )}
 
         {hubTab === 'progress' && (
-          <View style={styles.section}>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>This week</Text>
-              <Text style={styles.progressStat}>{weeklyMoodCount} mood check-ins</Text>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${Math.min(100, (weeklyMoodCount / 7) * 100)}%` }]} />
+          <View>
+            <View style={styles.section}>
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Wellbeing activities</Text>
+                <Text style={styles.progressStat}>
+                  {weeklyActivityLogs} / {weeklyActivityTarget || 0} logs
+                </Text>
+                <View style={styles.progressTrack}>
+                  <View style={[styles.progressFill, { width: `${weeklyActivityTarget ? Math.min(100, (weeklyActivityLogs / weeklyActivityTarget) * 100) : 0}%` }]} />
+                </View>
+                <TouchableOpacity onPress={() => setHubTab('journal')}>
+                  <Text style={styles.viewAll}>Open activities</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.muted}>Aim for one check-in a day</Text>
             </View>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Wellbeing activities</Text>
-              <Text style={styles.progressStat}>
-                {weeklyActivityLogs} / {weeklyActivityTarget || 0} logs
-              </Text>
-              <View style={styles.progressTrack}>
-                <View style={[styles.progressFill, { width: `${weeklyActivityTarget ? Math.min(100, (weeklyActivityLogs / weeklyActivityTarget) * 100) : 0}%` }]} />
-              </View>
-              <TouchableOpacity onPress={() => setHubTab('journal')}>
-                <Text style={styles.viewAll}>Open activities</Text>
-              </TouchableOpacity>
-            </View>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.insightTabs}
+            >
+              {INSIGHT_TABS.map((tab) => {
+                const selected = insightTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    onPress={() => setInsightTab(tab.key)}
+                    style={[styles.insightTab, selected && styles.insightTabActive]}
+                    activeOpacity={0.85}
+                  >
+                    <Text style={[styles.insightTabLabel, selected && styles.insightTabLabelActive]}>{tab.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {insightTab === 'history' && <MoodHistoryPanel />}
+            {insightTab === 'trends' && <MoodTrendsPanel />}
+            {insightTab === 'patterns' && <MoodPatternsPanel />}
+            {insightTab === 'compare' && <MoodComparePanel />}
+            {insightTab === 'report' && <MoodReportPanel />}
           </View>
         )}
 
-        {hubTab === 'reminder' && (
-          <View style={styles.section}>
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Daily reminders</Text>
-              <View style={styles.reminderForm}>
-                <TextInput
-                  value={reminderText}
-                  onChangeText={setReminderText}
-                  placeholder="e.g. Evening breathing at 8pm"
-                  placeholderTextColor="#8B949E"
-                  style={styles.reminderInput}
-                />
-                <TouchableOpacity
-                  style={styles.smallButton}
-                  onPress={() => {
-                    if (!reminderText.trim()) return;
-                    persistReminders([{ id: String(Date.now()), text: reminderText.trim(), done: false }, ...reminders]);
-                    setReminderText('');
-                  }}
-                >
-                  <Text style={styles.primaryText}>Add</Text>
-                </TouchableOpacity>
-              </View>
-              {reminders.map((reminder) => (
-                <TouchableOpacity
-                  key={reminder.id}
-                  style={styles.todayRow}
-                  onPress={() => persistReminders(reminders.map((item) => (item.id === reminder.id ? { ...item, done: !item.done } : item)))}
-                >
-                  <Ionicons name={reminder.done ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={reminder.done ? BRAND : '#C5CAD1'} />
-                  <Text style={[styles.todayLabel, reminder.done && styles.todayDone]}>{reminder.text}</Text>
-                </TouchableOpacity>
-              ))}
-              {reminders.length === 0 ? <Text style={styles.empty}>Add a reminder to keep your routine on track.</Text> : null}
-            </View>
-          </View>
-        )}
+        {hubTab === 'reminder' && <RemindersPanel />}
       </ScrollView>
 
       <Modal visible={showActivityForm} transparent animationType="slide" onRequestClose={resetActivityForm}>
@@ -747,9 +735,11 @@ const styles = StyleSheet.create({
   todayLabel: { fontSize: 15, color: '#1C242C', fontWeight: '600', flex: 1 },
   todayDone: { color: '#8B949E', textDecorationLine: 'line-through' },
   progressStat: { fontSize: 22, fontWeight: '800', color: '#1C242C', marginBottom: 10 },
-  reminderForm: { flexDirection: 'row', gap: 8, marginBottom: 12 },
-  reminderInput: { flex: 1, backgroundColor: '#F3F5F7', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10 },
-  smallButton: { backgroundColor: BRAND, borderRadius: 10, paddingHorizontal: 16, justifyContent: 'center' },
+  insightTabs: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
+  insightTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#EEF3F7' },
+  insightTabActive: { backgroundColor: BRAND },
+  insightTabLabel: { fontSize: 13, fontWeight: '700', color: '#5B6570' },
+  insightTabLabelActive: { color: '#FFFFFF' },
   modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-end' },
   modalCard: { backgroundColor: '#FFFFFF', padding: 20, borderTopLeftRadius: 20, borderTopRightRadius: 20 },
   formInput: { backgroundColor: '#F3F5F7', borderRadius: 10, padding: 12, marginBottom: 10 },
