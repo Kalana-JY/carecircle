@@ -19,6 +19,9 @@ const goalRoutes = require("./src/routes/goalRoutes");
 const sessionRoutes = require("./src/routes/sessionRoutes");
 const crisisSupportRoutes = require("./src/routes/crisisSupportRoutes");
 const messageRoutes = require("./src/routes/messageRoutes");
+const moodReportRoutes = require("./src/routes/moodReportRoutes");
+const reminderRoutes = require("./src/routes/reminderRoutes");
+const notificationRoutes = require("./src/routes/notificationRoutes");
 
 
 const app = express();
@@ -55,6 +58,9 @@ mount('/api/wellness-activities', wellnessActivityRoutes);
 mount('/api/goals', goalRoutes);
 mount('/api/sessions', sessionRoutes);
 mount('/api/conversations', messageRoutes);
+mount('/api/mood-reports', moodReportRoutes);
+mount('/api/reminders', reminderRoutes);
+mount('/api/notifications', notificationRoutes);
 
 app.get("/api/ping-crisis", (req, res) => {
   res.json({ ok: true, route: "crisis-ping" });

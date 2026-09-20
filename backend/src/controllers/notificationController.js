@@ -2,15 +2,18 @@ const Notification = require('../models/Notification');
 const Achievement = require('../models/Achievement');
 const { ACHIEVEMENT_CATALOG } = require('../constants/goals');
 const { handleError, toUserId, syncUserNotifications } = require('../services/goalTracking');
+const { syncReminderNotifications } = require('../services/reminderService');
 const mongoose = require('mongoose');
 
 exports.listNotifications = async (req, res) => {
   try {
     const userId = toUserId(req);
     await syncUserNotifications(userId);
+    await syncReminderNotifications(userId);
 
     const filter = { userId };
     if (req.query.unread === 'true') filter.read = false;
+    if (req.query.type) filter.type = req.query.type;
 
     const items = await Notification.find(filter).sort({ createdAt: -1 }).limit(100);
     const unreadCount = await Notification.countDocuments({ userId, read: false });
