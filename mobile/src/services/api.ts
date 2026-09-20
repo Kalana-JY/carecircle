@@ -361,6 +361,25 @@ export async function apiFetchText(
   return text;
 }
 
+/** Downloads a binary response (such as a generated PDF) with the session token attached. */
+export async function apiFetchBytes(
+  path: string
+): Promise<Uint8Array> {
+  const response = await fetch(`${API_URL}${path}`, {
+    headers: await getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Download failed (${response.status})`
+    );
+  }
+
+  const buffer = await response.arrayBuffer();
+
+  return new Uint8Array(buffer);
+}
+
 export type GoalStatus =
   | 'active'
   | 'in_progress'
@@ -709,4 +728,446 @@ export const achievementApi = {
         catalog: AchievementItem[];
       }>
     >('/api/achievements'),
+};
+
+/* ── Mood history, trends, and wellbeing insights ─────────────────── */
+
+/** Mood entries carry a 1-5 positivity score derived from the mood label. */
+export interface ScoredMoodEntry extends MoodEntry {
+  dateKey: string;
+  score: number;
+  valence: 'positive' | 'neutral' | 'negative';
+}
+
+export interface MoodSummary {
+  entryCount: number;
+  averageScore: number;
+  highestScore: number;
+  lowestScore: number;
+  volatility: number;
+  dominantMood: { mood: string; count: number } | null;
+  distribution: Record<string, number>;
+  valence: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+  positiveRate: number;
+  negativeRate: number;
+}
+
+export interface MoodDayPoint {
+  date: string;
+  dayOfWeek: string;
+  entryCount: number;
+  averageScore: number;
+  dominantMood: string | null;
+}
+
+export interface MoodComparison {
+  scoreDelta: number;
+  entryDelta: number;
+  positiveRateDelta: number;
+  verdict:
+    | 'improved'
+    | 'declined'
+    | 'stable'
+    | 'insufficient_data';
+  message: string;
+}
+
+export interface MoodTrendDirection {
+  direction:
+    | 'improving'
+    | 'declining'
+    | 'stable'
+    | 'insufficient_data';
+  change: number;
+}
+
+export interface MoodHistoryResponse {
+  range: { start: string; end: string; days: number };
+  summary: MoodSummary;
+  timeline: MoodDayPoint[];
+  items: ScoredMoodEntry[];
+  meta: { page: number; limit: number; total: number };
+}
+
+export interface MoodWeekBucket extends MoodSummary {
+  weekStart: string;
+  weekEnd: string;
+  label: string;
+  isCurrentWeek: boolean;
+  days: MoodDayPoint[];
+}
+
+export interface MoodMonthBucket extends MoodSummary {
+  month: string;
+  label: string;
+  isCurrentMonth: boolean;
+  daysLogged: number;
+  bestDay: { date: string; averageScore: number } | null;
+  hardestDay: {
+    date: string;
+    averageScore: number;
+  } | null;
+}
+
+export interface MoodWeeklyTrends {
+  range: { start: string; end: string; weeks: number };
+  weeks: MoodWeekBucket[];
+  thisWeek: MoodWeekBucket;
+  lastWeek: MoodWeekBucket | null;
+  weekOverWeek: MoodComparison | null;
+  trend: MoodTrendDirection;
+}
+
+export interface MoodMonthlyTrends {
+  range: { start: string; end: string; months: number };
+  months: MoodMonthBucket[];
+  thisMonth: MoodMonthBucket;
+  lastMonth: MoodMonthBucket | null;
+  monthOverMonth: MoodComparison | null;
+  trend: MoodTrendDirection;
+}
+
+/** How much an activity or tag shifts the average mood score. */
+export interface MoodCorrelation {
+  value: string;
+  entryCount: number;
+  averageScore: number;
+  impact: number;
+}
+
+export interface MoodStreak {
+  length: number;
+  start: string | null;
+  end: string | null;
+}
+
+export interface MoodPatterns {
+  range: { start: string; end: string; days: number };
+  summary: MoodSummary;
+  byDayOfWeek: {
+    dayOfWeek: string;
+    dayIndex: number;
+    entryCount: number;
+    averageScore: number;
+  }[];
+  activities: {
+    lifting: MoodCorrelation[];
+    draining: MoodCorrelation[];
+  };
+  tags: {
+    lifting: MoodCorrelation[];
+    draining: MoodCorrelation[];
+  };
+  streaks: {
+    longestPositive: MoodStreak;
+    longestNegative: MoodStreak;
+  };
+  insights: string[];
+}
+
+export interface MoodProgressComparison {
+  period: 'week' | 'month' | 'custom';
+  current: MoodSummary & {
+    range: { start: string; end: string };
+    label: string;
+  };
+  previous: MoodSummary & {
+    range: { start: string; end: string };
+    label: string;
+  };
+  comparison: MoodComparison;
+}
+
+const rangeQuery = (range?: {
+  start?: string;
+  end?: string;
+}) => {
+  const params = new URLSearchParams();
+
+  if (range?.start) params.set('start', range.start);
+  if (range?.end) params.set('end', range.end);
+
+  const query = params.toString();
+
+  return query ? `?${query}` : '';
+};
+
+export const moodInsightsApi = {
+  history: (options?: {
+    start?: string;
+    end?: string;
+    page?: number;
+    limit?: number;
+    mood?: string;
+  }) => {
+    const params = new URLSearchParams();
+
+    if (options?.start) params.set('start', options.start);
+    if (options?.end) params.set('end', options.end);
+    if (options?.page)
+      params.set('page', String(options.page));
+    if (options?.limit)
+      params.set('limit', String(options.limit));
+    if (options?.mood) params.set('mood', options.mood);
+
+    const query = params.toString();
+
+    return apiFetch<MoodHistoryResponse>(
+      `/api/moods/history${query ? `?${query}` : ''}`
+    );
+  },
+
+  weekly: (weeks = 4) =>
+    apiFetch<MoodWeeklyTrends>(
+      `/api/moods/trends/weekly?weeks=${weeks}`
+    ),
+
+  monthly: (months = 6) =>
+    apiFetch<MoodMonthlyTrends>(
+      `/api/moods/trends/monthly?months=${months}`
+    ),
+
+  patterns: (range?: {
+    start?: string;
+    end?: string;
+  }) =>
+    apiFetch<MoodPatterns>(
+      `/api/moods/patterns${rangeQuery(range)}`
+    ),
+
+  compare: (period: 'week' | 'month' = 'week') =>
+    apiFetch<MoodProgressComparison>(
+      `/api/moods/compare?period=${period}`
+    ),
+};
+
+/* ── Mood report generation, export, and sharing ──────────────────── */
+
+export interface MoodReport {
+  generatedAt: string;
+  owner: { name: string | null; email: string | null };
+  range: { start: string; end: string; days: number };
+  summary: MoodSummary;
+  trend: MoodTrendDirection;
+  weeks: MoodWeekBucket[];
+  months: MoodMonthBucket[];
+  byDayOfWeek: {
+    dayOfWeek: string;
+    dayIndex: number;
+    entryCount: number;
+    averageScore: number;
+  }[];
+  topActivities: MoodCorrelation[];
+  drainingActivities: MoodCorrelation[];
+  topTags: MoodCorrelation[];
+  streaks: {
+    longestPositive: MoodStreak;
+    longestNegative: MoodStreak;
+  };
+  insights: string[];
+  entryCount: number;
+  entries?: ScoredMoodEntry[];
+}
+
+export interface MoodReportShare {
+  _id: string;
+  token: string;
+  shareUrl: string;
+  exportUrl: string;
+  range: { start: string; end: string };
+  recipientNote: string | null;
+  includeNotes: boolean;
+  expiresAt: string;
+  revokedAt: string | null;
+  active: boolean;
+  viewCount: number;
+  lastViewedAt: string | null;
+  createdAt: string;
+}
+
+const exportQuery = (
+  format: 'csv' | 'pdf',
+  range?: { start?: string; end?: string }
+) => {
+  const params = new URLSearchParams({ format });
+
+  if (range?.start) params.set('start', range.start);
+  if (range?.end) params.set('end', range.end);
+
+  return `?${params.toString()}`;
+};
+
+export const moodReportApi = {
+  summary: (range?: { start?: string; end?: string }) =>
+    apiFetch<MoodReport>(
+      `/api/moods/reports/summary${rangeQuery(range)}`
+    ),
+
+  exportCsv: (range?: { start?: string; end?: string }) =>
+    apiFetchText(
+      `/api/moods/reports/export${exportQuery(
+        'csv',
+        range
+      )}`
+    ),
+
+  exportPdf: (range?: { start?: string; end?: string }) =>
+    apiFetchBytes(
+      `/api/moods/reports/export${exportQuery(
+        'pdf',
+        range
+      )}`
+    ),
+
+  createShare: (body: {
+    start?: string;
+    end?: string;
+    expiresInDays?: number;
+    recipientNote?: string;
+    includeNotes?: boolean;
+  }) =>
+    apiFetch<{ message: string; data: MoodReportShare }>(
+      '/api/moods/reports/share',
+      {
+        method: 'POST',
+        body,
+      }
+    ),
+
+  listShares: () =>
+    apiFetch<{
+      items: MoodReportShare[];
+      meta: { total: number; active: number };
+    }>('/api/moods/reports/shares'),
+
+  revokeShare: (id: string) =>
+    apiFetch<{ message: string; data: MoodReportShare }>(
+      `/api/moods/reports/shares/${id}`,
+      {
+        method: 'DELETE',
+      }
+    ),
+};
+
+/* ── Wellbeing reminders and notifications ────────────────────────── */
+
+export type ReminderType =
+  | 'mood_log'
+  | 'wellness_activity'
+  | 'custom';
+
+export type ReminderFrequency =
+  | 'once'
+  | 'daily'
+  | 'weekly';
+
+export type ReminderStatus =
+  | 'active'
+  | 'paused'
+  | 'cancelled'
+  | 'completed';
+
+export interface WellbeingReminder {
+  _id: string;
+  type: ReminderType;
+  title?: string;
+  message?: string;
+  timeOfDay: string;
+  frequency: ReminderFrequency;
+  daysOfWeek: number[];
+  startDate: string | null;
+  utcOffsetMinutes: number;
+  status: ReminderStatus;
+  nextSendAt: string | null;
+  lastSentAt: string | null;
+  occurrenceCount: number;
+  resolvedTitle: string;
+  resolvedMessage: string;
+  createdAt: string;
+}
+
+export interface ReminderPayload {
+  type?: ReminderType;
+  title?: string;
+  message?: string;
+  timeOfDay: string;
+  frequency?: ReminderFrequency;
+  daysOfWeek?: number[];
+  startDate?: string;
+  utcOffsetMinutes?: number;
+}
+
+export interface ReminderNotification {
+  _id: string;
+  type: string;
+  title: string;
+  body: string;
+  read: boolean;
+  readAt: string | null;
+  metadata?: Record<string, any>;
+  createdAt: string;
+}
+
+export const reminderApi = {
+  list: (status?: ReminderStatus) =>
+    apiFetch<{
+      items: WellbeingReminder[];
+      meta: { total: number; active: number };
+    }>(
+      `/api/reminders${
+        status ? `?status=${status}` : ''
+      }`
+    ),
+
+  create: (payload: ReminderPayload) =>
+    apiFetch<{
+      message: string;
+      data: WellbeingReminder;
+    }>('/api/reminders', {
+      method: 'POST',
+      body: payload,
+    }),
+
+  update: (
+    id: string,
+    payload: Partial<ReminderPayload>
+  ) =>
+    apiFetch<{
+      message: string;
+      data: WellbeingReminder;
+    }>(`/api/reminders/${id}`, {
+      method: 'PUT',
+      body: payload,
+    }),
+
+  setStatus: (id: string, status: 'active' | 'paused') =>
+    apiFetch<{
+      message: string;
+      data: WellbeingReminder;
+    }>(`/api/reminders/${id}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+
+  remove: (id: string) =>
+    apiFetch<{
+      message: string;
+      data: WellbeingReminder;
+    }>(`/api/reminders/${id}`, {
+      method: 'DELETE',
+    }),
+
+  notifications: (unreadOnly = false) =>
+    apiFetch<{
+      items: ReminderNotification[];
+      meta: { total: number; unreadCount: number };
+    }>(
+      `/api/reminders/notifications${
+        unreadOnly ? '?unread=true' : ''
+      }`
+    ),
 };
