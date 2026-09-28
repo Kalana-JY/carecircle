@@ -151,30 +151,34 @@ export default function ProfileScreen() {
 
         {/* Sessions & Notification Card */}
         <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* Sessions */}
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => navigation.navigate('BookedSessions')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="calendar-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Sessions</Text>
-            </View>
-            <View style={styles.menuRight}>
-              {bookings.length > 0 && (
-                <View style={[styles.badgePill, { backgroundColor: colors.brandLight }]}>
-                  <Text style={[styles.badgePillText, { color: colors.brand }]}>{bookings.length}</Text>
+          {/* My Sessions (Members only) */}
+          {appStatus !== 'approved' && (
+            <>
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => navigation.navigate('BookedSessions')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuLeft}>
+                  <Ionicons name="calendar-outline" size={20} color={colors.text} />
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>My Sessions</Text>
                 </View>
-              )}
-              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-            </View>
-          </TouchableOpacity>
+                <View style={styles.menuRight}>
+                  {bookings.length > 0 && (
+                    <View style={[styles.badgePill, { backgroundColor: colors.brandLight }]}>
+                      <Text style={[styles.badgePillText, { color: colors.brand }]}>{bookings.length}</Text>
+                    </View>
+                  )}
+                  <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+                </View>
+              </TouchableOpacity>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            </>
+          )}
 
-          {/* Manage Sessions (if Peer Supporter) */}
+          {/* Manage Sessions (Peer Supporters only) */}
           {appStatus === 'approved' && (
             <>
-              <View style={[styles.divider, { backgroundColor: colors.border }]} />
               <TouchableOpacity
                 style={styles.menuRow}
                 onPress={() => navigation.navigate('ManageSchedule')}
@@ -182,14 +186,13 @@ export default function ProfileScreen() {
               >
                 <View style={styles.menuLeft}>
                   <Ionicons name="calendar-number-outline" size={20} color={colors.text} />
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>Manage Schedule</Text>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>Manage Sessions</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
             </>
           )}
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
           {/* Notification */}
           <TouchableOpacity

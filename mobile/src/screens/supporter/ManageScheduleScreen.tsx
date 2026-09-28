@@ -15,34 +15,40 @@ import {
   KeyboardAvoidingView,
   RefreshControl,
   StatusBar,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/store/AuthContext';
 import { apiFetch } from '@/services/api';
-import { Fonts, Colors } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function ManageScheduleScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
+
   const colors = {
-    background: isDark ? '#121212' : '#F5F7FA',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    text: isDark ? '#ECEDEE' : '#1C2024',
-    textSecondary: isDark ? '#9BA1A6' : '#687076',
-    border: isDark ? '#2E2E2E' : '#E6E8EB',
-    inputBg: isDark ? '#1A1A1A' : '#F0F2F5',
-    brand: '#245B8B',
-    brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
-    accentGreen: '#34C759',
-    accentRed: '#FF3B30',
+    background: isDark ? '#0F172A' : '#F8FAFC',
+    card: isDark ? '#1E293B' : '#FFFFFF',
+    text: isDark ? '#F8FAFC' : '#0F172A',
+    textSecondary: isDark ? '#94A3B8' : '#64748B',
+    border: isDark ? '#334155' : '#E2E8F0',
+    inputBg: isDark ? '#1E293B' : '#F1F5F9',
+    brand: '#2563EB',
+    brandLight: isDark ? '#1E3A8A40' : '#EFF6FF',
+    accentRed: '#DC2626',
+    fabBg: '#2563EB',
+    divider: isDark ? '#334155' : '#E2E8F0',
   };
 
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingSession, setEditingSession] = useState<any | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
@@ -63,7 +69,8 @@ export default function ManageScheduleScreen() {
     try {
       setLoading(true);
       const data = await apiFetch('/api/sessions/my-schedule');
-      setSessions(data.items || []);
+      const items = data.items || [];
+      setSessions(items);
     } catch (err: any) {
       console.error('[ManageSchedule] Fetch error:', err);
       Alert.alert('Error', err.message || 'Failed to load schedule.');
@@ -82,12 +89,23 @@ export default function ManageScheduleScreen() {
     fetchSchedule();
   }, [fetchSchedule]);
 
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Set default values for new session form
   const openCreateModal = () => {
     setEditingSession(null);
     setTitle('');
     setDescription('');
-    // Pre-populate with tomorrow's date
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     setDate(tomorrow.toISOString().split('T')[0]);
@@ -128,7 +146,6 @@ export default function ManageScheduleScreen() {
       return;
     }
 
-    // Parse date/times
     const startStr = `${date.trim()}T${startTime.trim()}:00`;
     const endStr = `${date.trim()}T${endTime.trim()}:00`;
     const start = new Date(startStr);
@@ -246,138 +263,228 @@ export default function ManageScheduleScreen() {
     }
   };
 
+  const filteredSessions = sessions.filter((s) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      (s.title && s.title.toLowerCase().includes(q)) ||
+      (s.description && s.description.toLowerCase().includes(q)) ||
+      (s.venue && s.venue.toLowerCase().includes(q)) ||
+      (s.sessionType && s.sessionType.toLowerCase().includes(q))
+    );
+  });
+
   const renderSessionItem = ({ item }: { item: any }) => {
+    const isExpanded = expandedIds.has(item._id);
     const start = new Date(item.startTime);
     const end = new Date(item.endTime);
-    const formattedDate = start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
-    const formattedStart = start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const formattedEnd = end.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const formattedDate = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
+    const formattedStart = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const formattedEnd = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
     const isBooked = item.status === 'booked';
     const isCancelled = item.status === 'cancelled';
 
     return (
-      <View style={[styles.sessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-        <View style={styles.cardHeader}>
-          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>{item.title}</Text>
-          <View style={[
-            styles.badge, 
-            { 
-              backgroundColor: isBooked ? '#34C7591A' : isCancelled ? '#FF3B3015' : colors.brandLight, 
-              borderColor: isBooked ? '#34C759' : isCancelled ? '#FF3B30' : colors.brand 
-            }
-          ]}>
-            <Text style={[styles.badgeText, { color: isBooked ? '#34C759' : isCancelled ? '#FF3B30' : colors.brand }]}>
-              {item.status.toUpperCase()}
+      <View style={[styles.accordionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Accordion Header (Always Clickable) */}
+        <TouchableOpacity
+          style={styles.cardHeader}
+          onPress={() => toggleExpand(item._id)}
+          activeOpacity={0.75}
+        >
+          <View style={styles.cardHeaderLeft}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              {item.description || (item.sessionType === 'physical' ? 'Physical Session' : 'Virtual Session')}
             </Text>
           </View>
-        </View>
+          <Ionicons
+            name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+            size={22}
+            color={colors.text}
+          />
+        </TouchableOpacity>
 
-        {item.description ? (
-          <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>{item.description}</Text>
-        ) : null}
+        {/* Accordion Body */}
+        {isExpanded && (
+          <View style={styles.cardBody}>
+            <View style={[styles.cardDivider, { backgroundColor: colors.divider }]} />
 
-        <View style={styles.metaRow}>
-          <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-          <Text style={[styles.metaText, { color: colors.textSecondary }]}>
-            {formattedDate} at {formattedStart} - {formattedEnd}
-          </Text>
-        </View>
+            {item.sessionType === 'physical' ? (
+              <>
+                {/* Slots */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="albums-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    Slots: {isBooked ? '1 (Booked)' : '1 (Available)'}
+                  </Text>
+                </View>
 
-        {item.sessionType === 'physical' ? (
-          <View style={styles.metaRow}>
-            <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
-              Venue: <Text style={{ fontWeight: '600', color: colors.text }}>{item.venue || 'N/A'}</Text>
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.metaRow}>
-            <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
-            <Text style={[styles.metaText, { color: colors.textSecondary }]} numberOfLines={1}>
-              Online: <Text style={{ color: colors.brand }}>{item.meetingLink || 'Link auto-generated'}</Text>
-            </Text>
+                {/* Participants */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="people-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    Participants: {isBooked ? (item.userId?.name || '1 Participant') : 'No participants yet'}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                {/* Date */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>{formattedDate}</Text>
+                </View>
+
+                {/* Time */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    {formattedStart} - {formattedEnd}
+                  </Text>
+                </View>
+
+                {/* Virtual Hyperlink */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="videocam-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <TouchableOpacity
+                    onPress={() => {
+                      const raw = item.meetingLink?.trim();
+                      const url = raw
+                        ? (raw.startsWith('http') ? raw : `https://${raw}`)
+                        : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
+                      Linking.openURL(url).catch(() => {
+                        Alert.alert('Error', 'Unable to open meeting link.');
+                      });
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.meetingLinkBtn}
+                  >
+                    <Text
+                      style={[
+                        styles.detailText,
+                        styles.linkText,
+                        { color: colors.brand },
+                      ]}
+                    >
+                      Meeting Link
+                    </Text>
+                    <Ionicons name="open-outline" size={14} color={colors.brand} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+
+            {/* Bottom Actions Row */}
+            <View style={styles.cardActions}>
+              {/* Cancel / Delete Icon */}
+              <TouchableOpacity
+                onPress={() => {
+                  if (isBooked) {
+                    handleCancelSession(item._id, true);
+                  } else {
+                    handleDeleteSession(item._id);
+                  }
+                }}
+                hitSlop={8}
+                style={styles.actionIconBtn}
+                accessibilityLabel="Cancel or Delete Session"
+              >
+                <Ionicons name="close-circle-outline" size={26} color={colors.accentRed} />
+              </TouchableOpacity>
+
+              {/* Edit Icon */}
+              {!isCancelled && (
+                <TouchableOpacity
+                  onPress={() => openEditModal(item)}
+                  hitSlop={8}
+                  style={styles.actionIconBtn}
+                  accessibilityLabel="Edit Session"
+                >
+                  <Ionicons name="create-outline" size={25} color={colors.brand} />
+                </TouchableOpacity>
+              )}
+
+              {/* Booked Member / Attendees Icon (Physical Sessions only) */}
+              {isBooked && item.sessionType === 'physical' && (
+                <TouchableOpacity
+                  onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
+                  hitSlop={8}
+                  style={styles.actionIconBtn}
+                  accessibilityLabel="View Booked Member"
+                >
+                  <Ionicons name="people-outline" size={25} color={colors.brand} />
+                </TouchableOpacity>
+              )}
+            </View>
           </View>
         )}
-
-        {isBooked && item.userId && (
-          <TouchableOpacity
-            style={[styles.viewMemberBtn, { backgroundColor: colors.brandLight, borderColor: colors.brand }]}
-            onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
-            activeOpacity={0.7}
-          >
-            <Ionicons name="person-outline" size={14} color={colors.brand} />
-            <Text style={[styles.viewMemberBtnText, { color: colors.brand }]}>View Booked Member</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.actionRow}>
-          {!isCancelled && (
-            <TouchableOpacity 
-              style={[styles.editBtn, { borderColor: colors.border }]}
-              onPress={() => openEditModal(item)}
-            >
-              <Ionicons name="create-outline" size={16} color={colors.textSecondary} />
-              <Text style={[styles.actionBtnText, { color: colors.textSecondary }]}>Edit</Text>
-            </TouchableOpacity>
-          )}
-
-          {!isCancelled && (
-            <TouchableOpacity 
-              style={[styles.cancelBtn, { borderColor: '#FF3B30' }]}
-              onPress={() => handleCancelSession(item._id, isBooked)}
-            >
-              <Ionicons name="close-circle-outline" size={16} color="#FF3B30" />
-              <Text style={[styles.actionBtnText, { color: '#FF3B30' }]}>Cancel</Text>
-            </TouchableOpacity>
-          )}
-
-          {!isBooked && (
-            <TouchableOpacity 
-              style={[styles.deleteBtn, { borderColor: '#FF3B30' }]}
-              onPress={() => handleDeleteSession(item._id)}
-            >
-              <Ionicons name="trash-outline" size={16} color="#FF3B30" />
-              <Text style={[styles.actionBtnText, { color: '#FF3B30' }]}>Delete</Text>
-            </TouchableOpacity>
-          )}
-        </View>
       </View>
     );
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+      {/* Top Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={[styles.title, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Hosting Schedule</Text>
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>Manage your counseling and support sessions.</Text>
-        </View>
         <TouchableOpacity
-          style={[styles.addButton, { backgroundColor: colors.brand }]}
-          onPress={openCreateModal}
-          activeOpacity={0.8}
+          style={styles.headerBtn}
+          onPress={() => navigation.goBack()}
+          hitSlop={12}
+          accessibilityLabel="Go back"
         >
-          <Ionicons name="add" size={20} color="#FFF" />
-          <Text style={styles.addButtonText}>Add Slot</Text>
+          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        </TouchableOpacity>
+
+        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+          Manage Session
+        </Text>
+
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => Alert.alert('Notifications', 'No new schedule notifications.')}
+          hitSlop={12}
+          accessibilityLabel="Notifications"
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
+      {/* Search Input Bar */}
+      <View style={styles.searchContainer}>
+        <View style={[styles.searchBar, { backgroundColor: colors.inputBg }]}>
+          <TextInput
+            style={[styles.searchInput, { color: colors.text }]}
+            placeholder="Search"
+            placeholderTextColor={colors.textSecondary}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <Ionicons name="search-outline" size={20} color={colors.text} style={styles.searchIcon} />
+        </View>
+      </View>
+
+      {/* Main List */}
       {loading && !refreshing ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.brand} />
         </View>
-      ) : sessions.length === 0 ? (
+      ) : filteredSessions.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="calendar-outline" size={64} color={colors.textSecondary} style={{ opacity: 0.3, marginBottom: 10 }} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sessions Scheduled</Text>
+          <Ionicons name="calendar-outline" size={60} color={colors.textSecondary} style={{ opacity: 0.35, marginBottom: 12 }} />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sessions Found</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Tap &apos;Add Slot&apos; to schedule your availability for peer-support.
+            {searchQuery ? 'No sessions match your search criteria.' : 'Tap the + button to add your first support session.'}
           </Text>
         </View>
       ) : (
         <FlatList
-          data={sessions}
+          data={filteredSessions}
           keyExtractor={(item) => item._id}
           renderItem={renderSessionItem}
           contentContainerStyle={styles.listContainer}
@@ -387,6 +494,16 @@ export default function ManageScheduleScreen() {
           }
         />
       )}
+
+      {/* Floating Action Button (FAB) */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: colors.fabBg }]}
+        onPress={openCreateModal}
+        activeOpacity={0.85}
+        accessibilityLabel="Add session"
+      >
+        <Ionicons name="add" size={32} color="#FFFFFF" />
+      </TouchableOpacity>
 
       {/* Create / Edit Modal */}
       <Modal
@@ -414,7 +531,7 @@ export default function ManageScheduleScreen() {
                 <Text style={[styles.label, { color: colors.text }]}>Session Title</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  placeholder="e.g. Stress Coping & General Check-in"
+                  placeholder="e.g. Anxiety Coping Session"
                   placeholderTextColor={colors.textSecondary}
                   value={title}
                   onChangeText={setTitle}
@@ -423,16 +540,14 @@ export default function ManageScheduleScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Description (Optional)</Text>
+                <Text style={[styles.label, { color: colors.text }]}>Subtitle / Category</Text>
                 <TextInput
-                  style={[styles.input, styles.textArea, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  placeholder="Briefly state what support area or topics will be focused on..."
+                  style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+                  placeholder="e.g. Group Workshop, Anxiety Session"
                   placeholderTextColor={colors.textSecondary}
                   value={description}
                   onChangeText={setDescription}
-                  multiline
-                  numberOfLines={3}
-                  maxLength={500}
+                  maxLength={120}
                 />
               </View>
 
@@ -440,7 +555,7 @@ export default function ManageScheduleScreen() {
                 <Text style={[styles.label, { color: colors.text }]}>Date (YYYY-MM-DD)</Text>
                 <TextInput
                   style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  placeholder="2026-08-21"
+                  placeholder="2026-08-28"
                   placeholderTextColor={colors.textSecondary}
                   value={date}
                   onChangeText={setDate}
@@ -498,7 +613,7 @@ export default function ManageScheduleScreen() {
                         { color: sessionType === 'online' ? '#FFF' : colors.text },
                       ]}
                     >
-                      Online Meeting
+                      Virtual
                     </Text>
                   </TouchableOpacity>
 
@@ -523,32 +638,25 @@ export default function ManageScheduleScreen() {
                         { color: sessionType === 'physical' ? '#FFF' : colors.text },
                       ]}
                     >
-                      Physical Venue
+                      Physical
                     </Text>
                   </TouchableOpacity>
                 </View>
               </View>
 
-              {sessionType === 'online' ? (
-                <View style={[styles.infoBox, { backgroundColor: colors.brandLight, marginBottom: 16 }]}>
-                  <Ionicons name="information-circle-outline" size={20} color={colors.brand} />
-                  <Text style={[styles.infoBoxText, { color: colors.text }]}>
-                    A secure Jitsi video session will be automatically generated once this slot is published.
-                  </Text>
-                </View>
-              ) : (
+              {sessionType === 'physical' ? (
                 <View style={styles.formGroup}>
                   <Text style={[styles.label, { color: colors.text }]}>Venue / Location</Text>
                   <TextInput
                     style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                    placeholder="e.g. Counseling Room B, Community Health Center"
+                    placeholder="e.g. Community Center, 123 Main St, Suite 400"
                     placeholderTextColor={colors.textSecondary}
                     value={venue}
                     onChangeText={setVenue}
                     autoCapitalize="sentences"
                   />
                 </View>
-              )}
+              ) : null}
 
               <TouchableOpacity
                 style={[styles.submitBtn, { backgroundColor: colors.brand }]}
@@ -606,34 +714,140 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#0000001A',
+    paddingVertical: 14,
   },
-  title: {
+  headerBtn: {
+    padding: 4,
+  },
+  headerTitle: {
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  subtitle: {
-    fontSize: 13,
-    marginTop: 2,
+  searchContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 14,
   },
-  addButton: {
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 20,
-    gap: 4,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    height: 48,
   },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 13,
+  searchInput: {
+    flex: 1,
+    fontSize: 15,
+    paddingVertical: 0,
+  },
+  searchIcon: {
+    marginLeft: 8,
+  },
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 90,
+    gap: 12,
+  },
+  accordionCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
     fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  cardBody: {
+    marginTop: 8,
+  },
+  cardDivider: {
+    height: 1,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  detailIcon: {
+    width: 26,
+    marginRight: 6,
+  },
+  detailText: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  linkText: {
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  meetingLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  cardActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 6,
+  },
+  actionIconBtn: {
+    padding: 4,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 28,
+    right: 22,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#2563EB',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.35,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
   },
   center: {
     flex: 1,
@@ -651,176 +865,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
     lineHeight: 20,
-  },
-  listContainer: {
-    padding: 20,
-    gap: 16,
-  },
-  sessionCard: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-    marginRight: 8,
-  },
-  badge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  cardDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
-  },
-  metaText: {
-    fontSize: 13,
-  },
-  viewMemberBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    marginTop: 10,
-  },
-  viewMemberBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  memberModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  memberModalCard: {
-    width: '100%',
-    maxWidth: 320,
-    borderRadius: 20,
-    borderWidth: 1,
-    padding: 24,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  memberAvatarCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  memberModalHeading: {
-    fontSize: 12,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 6,
-  },
-  memberModalName: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  memberModalCloseBtn: {
-    width: '100%',
-    borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  memberModalCloseBtnText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  actionRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: '#00000010',
-    paddingTop: 12,
-  },
-  editBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  cancelBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  deleteBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginLeft: 'auto',
-  },
-  actionBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,
@@ -865,10 +909,6 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     fontSize: 14,
   },
-  textArea: {
-    height: 80,
-    textAlignVertical: 'top',
-  },
   submitBtn: {
     borderRadius: 12,
     paddingVertical: 14,
@@ -900,16 +940,52 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 12,
-    gap: 10,
-  },
-  infoBoxText: {
+  memberModalOverlay: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  memberModalCard: {
+    width: '100%',
+    maxWidth: 320,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+  },
+  memberAvatarCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  memberModalHeading: {
     fontSize: 12,
-    lineHeight: 18,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  memberModalName: {
+    fontSize: 20,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  memberModalCloseBtn: {
+    width: '100%',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberModalCloseBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

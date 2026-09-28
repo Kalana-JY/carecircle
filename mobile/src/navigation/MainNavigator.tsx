@@ -179,10 +179,7 @@ export default function MainNavigator() {
       <Stack.Screen
         name="ManageSchedule"
         component={ManageScheduleScreen}
-        options={{
-          title: 'Manage Support Sessions',
-          headerBackTitle: 'Back',
-        }}
+        options={{ headerShown: false }}
       />
 
       <Stack.Screen
