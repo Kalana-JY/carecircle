@@ -22,6 +22,12 @@ import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
 import BookedSessionsScreen from '../screens/main/BookedSessionsScreen';
+import PersonalInfoScreen from '../screens/main/PersonalInfoScreen';
+import HelpSupportScreen from '../screens/support/HelpSupportScreen';
+import FAQScreen from '../screens/support/FAQScreen';
+import ContactSupportScreen from '../screens/support/ContactSupportScreen';
+import PrivacyPolicyScreen from '../screens/support/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/support/TermsOfServiceScreen';
 
 import ConversationsScreen from '../screens/messaging/ConversationsScreen';
 import ChatRoomScreen from '../screens/messaging/ChatRoomScreen';
@@ -48,6 +54,12 @@ export type MainStackParamList = {
   Journals: undefined;
   WellnessActivities: undefined;
   Profile: undefined;
+  PersonalInfo: undefined;
+  HelpSupport: undefined;
+  FAQ: undefined;
+  ContactSupport: undefined;
+  PrivacyPolicy: undefined;
+  TermsOfService: undefined;
   Resources: undefined;
   BookedSessions: undefined;
   ForumDetail: undefined;
@@ -104,7 +116,7 @@ function MainTabs() {
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}
-        options={{ title: 'Profile' }}
+        options={{ title: 'Account' }}
       />
     </Tab.Navigator>
   );
@@ -194,6 +206,42 @@ export default function MainNavigator() {
       <Stack.Screen
         name="BookedSessions"
         component={BookedSessionsScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="PersonalInfo"
+        component={PersonalInfoScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="HelpSupport"
+        component={HelpSupportScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="FAQ"
+        component={FAQScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="ContactSupport"
+        component={ContactSupportScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="PrivacyPolicy"
+        component={PrivacyPolicyScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="TermsOfService"
+        component={TermsOfServiceScreen}
         options={{ headerShown: false }}
       />
 

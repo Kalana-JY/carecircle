@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
+  StatusBar,
+  Image,
+  Alert,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,35 +17,31 @@ import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { SidePanel } from '../../components/SidePanel';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
   const [appStatus, setAppStatus] = useState<string>('none');
-  const [loading, setLoading] = useState<boolean>(true);
+  const [bookings, setBookings] = useState<any[]>([]);
 
-  // Dynamic Theme Colors
+  // Dynamic Theme Colors matching mockup
   const colors = {
-    background: isDark ? '#121212' : '#F5F7FA',
+    background: isDark ? '#121212' : '#EDF4F9',
     card: isDark ? '#1E1E1E' : '#FFFFFF',
     text: isDark ? '#ECEDEE' : '#1C2024',
     textSecondary: isDark ? '#9BA1A6' : '#687076',
-    border: isDark ? '#2E2E2E' : '#E6E8EB',
+    border: isDark ? '#2E2E2E' : '#E8EEF4',
     brand: '#245B8B',
     brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
-    accentOrange: '#FF9500',
-    accentGreen: '#34C759',
-    accentRed: '#FF3B30',
+    logoutRed: '#FF5C5C',
   };
-
-  const [bookings, setBookings] = useState<any[]>([]);
-  const [loadingBookings, setLoadingBookings] = useState<boolean>(false);
 
   const fetchApplicationStatus = useCallback(async () => {
     if (!user?.token) return;
     try {
-      setLoading(true);
       const response = await fetch(`${API_URL}/api/peer-supporters/status`, {
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -54,15 +53,12 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('[Profile] Failed to fetch application status:', error);
-    } finally {
-      setLoading(false);
     }
   }, [user]);
 
   const fetchBookings = useCallback(async () => {
     if (!user?.token) return;
     try {
-      setLoadingBookings(true);
       const response = await fetch(`${API_URL}/api/sessions/my-bookings`, {
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -74,12 +70,9 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('[Profile] Failed to fetch booked sessions:', error);
-    } finally {
-      setLoadingBookings(false);
     }
   }, [user]);
 
-  // Refresh status whenever the tab comes into focus
   useFocusEffect(
     useCallback(() => {
       fetchApplicationStatus();
@@ -97,96 +90,76 @@ export default function ProfileScreen() {
       .substring(0, 2);
   };
 
-  const getStatusBadgeConfig = () => {
-    if (appStatus === 'approved') {
-      return {
-        label: 'Peer Supporter',
-        icon: 'shield-checkmark' as const,
-        bg: isDark ? 'rgba(52, 199, 89, 0.18)' : 'rgba(52, 199, 89, 0.12)',
-        border: isDark ? 'rgba(52, 199, 89, 0.35)' : 'rgba(52, 199, 89, 0.3)',
-        text: isDark ? '#4CD964' : '#1E9E4F',
-      };
-    }
-    if (appStatus === 'pending') {
-      return {
-        label: 'Pending',
-        icon: 'time-outline' as const,
-        bg: isDark ? 'rgba(255, 149, 0, 0.18)' : 'rgba(255, 149, 0, 0.12)',
-        border: isDark ? 'rgba(255, 149, 0, 0.35)' : 'rgba(255, 149, 0, 0.3)',
-        text: isDark ? '#FF9F0A' : '#C77700',
-      };
-    }
-    return {
-      label: 'Member',
-      icon: 'person-outline' as const,
-      bg: isDark ? 'rgba(58, 124, 165, 0.18)' : 'rgba(58, 124, 165, 0.1)',
-      border: isDark ? 'rgba(58, 124, 165, 0.35)' : 'rgba(58, 124, 165, 0.25)',
-      text: colors.brand,
-    };
-  };
-
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.headerContainer}>
-          <Text style={[styles.pageTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-            My Profile
-          </Text>
-        </View>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.background}
+      />
 
-        {/* User Card */}
-        <View style={[styles.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <View style={[styles.avatar, { backgroundColor: colors.brandLight }]}>
-            <Text style={[styles.avatarText, { color: colors.brand }]}>
-              {getInitials(user?.name)}
-            </Text>
-          </View>
-          {(() => {
-            const badge = getStatusBadgeConfig();
-            return (
-              <View style={[styles.statusBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-                <Ionicons name={badge.icon} size={13} color={badge.text} />
-                <Text style={[styles.statusBadgeText, { color: badge.text }]}>
-                  {badge.label}
+      {/* Header with hamburger and centered title */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          onPress={() => setIsSidePanelOpen(true)}
+          style={styles.menuBtn}
+          hitSlop={12}
+          accessibilityLabel="Open side menu"
+        >
+          <Ionicons name="menu-outline" size={26} color={colors.text} />
+        </TouchableOpacity>
+
+        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+          Account
+        </Text>
+
+        <View style={{ width: 26 }} />
+      </View>
+
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* User Card - click to navigate to Personal Info */}
+        <TouchableOpacity
+          style={[styles.userCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+          onPress={() => navigation.navigate('PersonalInfo')}
+          activeOpacity={0.75}
+        >
+          <View style={styles.userCardLeft}>
+            {user?.avatarUrl ? (
+              <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <View style={[styles.avatarFallback, { backgroundColor: colors.brandLight }]}>
+                <Text style={[styles.avatarFallbackText, { color: colors.brand }]}>
+                  {getInitials(user?.name)}
                 </Text>
               </View>
-            );
-          })()}
-          <Text style={[styles.name, { color: colors.text }]}>{user?.name || 'Guest User'}</Text>
-          <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'No email associated'}</Text>
-          <Text style={[styles.phone, { color: colors.textSecondary }]}>{user?.phoneNumber || 'No phone number'}</Text>
-        </View>
+            )}
 
-        {/* Menu Section Card */}
+            <View style={styles.userInfoText}>
+              <Text style={[styles.userName, { color: colors.text }]} numberOfLines={1}>
+                {user?.name || 'Jason Smith'}
+              </Text>
+              <Text style={[styles.userEmail, { color: colors.textSecondary }]} numberOfLines={1}>
+                {user?.email || 'jason.smith@gmail.com'}
+              </Text>
+            </View>
+          </View>
+
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </TouchableOpacity>
+
+        {/* Sessions & Notification Card */}
         <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* Manage Sessions (only for approved Peer Supporters) */}
-          {appStatus === 'approved' && (
-            <>
-              <TouchableOpacity
-                style={styles.menuRow}
-                onPress={() => navigation.navigate('ManageSchedule')}
-                activeOpacity={0.7}
-              >
-                <View style={styles.menuLeft}>
-                  <Ionicons name="calendar-outline" size={22} color={colors.text} />
-                  <Text style={[styles.menuTitle, { color: colors.text }]}>Manage Sessions</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-              </TouchableOpacity>
-              <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-            </>
-          )}
-
-          {/* Booked Sessions */}
+          {/* Sessions */}
           <TouchableOpacity
             style={styles.menuRow}
             onPress={() => navigation.navigate('BookedSessions')}
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="calendar-number-outline" size={22} color={colors.text} />
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Booked Sessions</Text>
+              <Ionicons name="calendar-outline" size={20} color={colors.text} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Sessions</Text>
             </View>
             <View style={styles.menuRight}>
               {bookings.length > 0 && (
@@ -198,22 +171,88 @@ export default function ProfileScreen() {
             </View>
           </TouchableOpacity>
 
-          <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
+          {/* Manage Sessions (if Peer Supporter) */}
+          {appStatus === 'approved' && (
+            <>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => navigation.navigate('ManageSchedule')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuLeft}>
+                  <Ionicons name="calendar-number-outline" size={20} color={colors.text} />
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>Manage Schedule</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </>
+          )}
 
-          {/* Sign Out */}
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Notification */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => Alert.alert('Notifications', 'No new notifications right now.')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="notifications-outline" size={20} color={colors.text} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Notification</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        </View>
+
+        {/* Preferences, Support & Logout Card */}
+        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          {/* App Preferences */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => Alert.alert('App Preferences', 'Personalize your notification and display settings.')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="eye-outline" size={20} color={colors.text} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>App Preferences</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Help and Support */}
+          <TouchableOpacity
+            style={styles.menuRow}
+            onPress={() => navigation.navigate('HelpSupport')}
+            activeOpacity={0.7}
+          >
+            <View style={styles.menuLeft}>
+              <Ionicons name="help-circle-outline" size={20} color={colors.text} />
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Help and Support</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          {/* Logout */}
           <TouchableOpacity
             style={styles.menuRow}
             onPress={signOut}
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
-              <Ionicons name="log-out-outline" size={22} color={colors.accentRed} />
-              <Text style={[styles.menuTitle, { color: colors.accentRed }]}>Sign Out</Text>
+              <Ionicons name="log-out-outline" size={20} color={colors.logoutRed} />
+              <Text style={[styles.menuTitle, { color: colors.logoutRed }]}>Logout</Text>
             </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      {/* Side Panel Drawer */}
+      <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
     </SafeAreaView>
   );
 }
@@ -221,98 +260,101 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  headerContainer: {
-    marginBottom: 20,
-    marginTop: Platform.OS === 'android' ? 10 : 0,
-  },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -0.5,
-  },
-  profileCard: {
-    alignItems: 'center',
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  statusBadge: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 20,
-    borderWidth: 1,
-    marginBottom: 12,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
   },
-  statusBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.2,
+  menuBtn: {
+    padding: 2,
   },
-  avatarText: {
-    fontSize: 26,
-    fontWeight: '700',
-  },
-  name: {
+  headerTitle: {
     fontSize: 20,
     fontWeight: '700',
-    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  email: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 4,
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 40,
+    gap: 16,
   },
-  phone: {
-    fontSize: 14,
-    fontWeight: '500',
+  userCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    elevation: 1,
+  },
+  userCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+    marginRight: 8,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+  },
+  avatarFallback: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarFallbackText: {
+    fontSize: 18,
+    fontWeight: '700',
+  },
+  userInfoText: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  userEmail: {
+    fontSize: 13,
   },
   menuCard: {
     borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
-    marginBottom: 24,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.03,
     shadowRadius: 6,
-    elevation: 2,
+    elevation: 1,
   },
   menuRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 18,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
   },
   menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 14,
   },
   menuTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
   menuRight: {
@@ -320,17 +362,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  menuDivider: {
-    height: StyleSheet.hairlineWidth,
-    marginHorizontal: 20,
-  },
   badgePill: {
     paddingHorizontal: 8,
     paddingVertical: 2,
-    borderRadius: 12,
+    borderRadius: 10,
   },
   badgePillText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    marginLeft: 52,
+    marginRight: 16,
   },
 });
