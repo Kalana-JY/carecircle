@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '@/store/AuthContext';
 import { apiFetch } from '@/services/api';
 import { Fonts } from '@/constants/theme';
@@ -52,7 +53,6 @@ export default function ManageScheduleScreen() {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingSession, setEditingSession] = useState<any | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
-
   // Form states
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -63,6 +63,83 @@ export default function ManageScheduleScreen() {
   const [sessionType, setSessionType] = useState<'online' | 'physical'>('online');
   const [venue, setVenue] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
+
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState<boolean>(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState<boolean>(false);
+
+  const getDateObj = (dateStr: string) => {
+    if (!dateStr) return new Date();
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      const day = parseInt(parts[2], 10);
+      return new Date(year, month, day);
+    }
+    return new Date();
+  };
+
+  const getTimeObj = (timeStr: string) => {
+    const d = new Date();
+    if (!timeStr) return d;
+    const parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      d.setHours(parseInt(parts[0], 10), parseInt(parts[1], 10), 0, 0);
+    }
+    return d;
+  };
+
+  const formatDateDisplay = (dateStr: string) => {
+    if (!dateStr) return 'Select Date';
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    return dateStr;
+  };
+
+  const formatTimeDisplay = (timeStr: string) => {
+    if (!timeStr) return 'Select Time';
+    const parts = timeStr.split(':');
+    if (parts.length >= 2) {
+      const hours = parseInt(parts[0], 10);
+      const minutes = parts[1];
+      const period = hours >= 12 ? 'PM' : 'AM';
+      const h12 = hours % 12 || 12;
+      return `${h12}:${minutes} ${period}`;
+    }
+    return timeStr;
+  };
+
+  const onDateChange = (event: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate && event.type !== 'dismissed') {
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      setDate(`${year}-${month}-${day}`);
+    }
+  };
+
+  const onStartTimeChange = (event: any, selectedTime?: Date) => {
+    setShowStartTimePicker(false);
+    if (selectedTime && event.type !== 'dismissed') {
+      const hours = String(selectedTime.getHours()).padStart(2, '0');
+      const minutes = String(selectedTime.getMinutes()).padStart(2, '0');
+      setStartTime(`${hours}:${minutes}`);
+    }
+  };
+
+  const onEndTimeChange = (event: any, selectedTime?: Date) => {
+    setShowEndTimePicker(false);
+    if (selectedTime && event.type !== 'dismissed') {
+      const hours = String(selectedTime.getHours()).padStart(2, '0');
+      const minutes = String(selectedTime.getMinutes()).padStart(2, '0');
+      setEndTime(`${hours}:${minutes}`);
+    }
+  };
 
   // Fetch supporter schedule
   const fetchSchedule = useCallback(async () => {
@@ -551,41 +628,49 @@ export default function ManageScheduleScreen() {
                 />
               </View>
 
+              {/* Date Picker Trigger */}
               <View style={styles.formGroup}>
-                <Text style={[styles.label, { color: colors.text }]}>Date (YYYY-MM-DD)</Text>
-                <TextInput
-                  style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                  placeholder="2026-08-28"
-                  placeholderTextColor={colors.textSecondary}
-                  value={date}
-                  onChangeText={setDate}
-                  maxLength={10}
-                />
+                <Text style={[styles.label, { color: colors.text }]}>Date</Text>
+                <TouchableOpacity
+                  style={[styles.pickerBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+                  onPress={() => setShowDatePicker(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.pickerText, { color: date ? colors.text : colors.textSecondary }]}>
+                    {formatDateDisplay(date)}
+                  </Text>
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} />
+                </TouchableOpacity>
               </View>
 
+              {/* Start & End Time Picker Triggers */}
               <View style={styles.row}>
                 <View style={[styles.formGroup, { flex: 1, marginRight: 8 }]}>
-                  <Text style={[styles.label, { color: colors.text }]}>Start Time (HH:MM)</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                    placeholder="14:00"
-                    placeholderTextColor={colors.textSecondary}
-                    value={startTime}
-                    onChangeText={setStartTime}
-                    maxLength={5}
-                  />
+                  <Text style={[styles.label, { color: colors.text }]}>Start Time</Text>
+                  <TouchableOpacity
+                    style={[styles.pickerBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+                    onPress={() => setShowStartTimePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerText, { color: startTime ? colors.text : colors.textSecondary }]}>
+                      {formatTimeDisplay(startTime)}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
 
                 <View style={[styles.formGroup, { flex: 1, marginLeft: 8 }]}>
-                  <Text style={[styles.label, { color: colors.text }]}>End Time (HH:MM)</Text>
-                  <TextInput
-                    style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
-                    placeholder="15:00"
-                    placeholderTextColor={colors.textSecondary}
-                    value={endTime}
-                    onChangeText={setEndTime}
-                    maxLength={5}
-                  />
+                  <Text style={[styles.label, { color: colors.text }]}>End Time</Text>
+                  <TouchableOpacity
+                    style={[styles.pickerBox, { backgroundColor: colors.inputBg, borderColor: colors.border }]}
+                    onPress={() => setShowEndTimePicker(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.pickerText, { color: endTime ? colors.text : colors.textSecondary }]}>
+                      {formatTimeDisplay(endTime)}
+                    </Text>
+                    <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
+                  </TouchableOpacity>
                 </View>
               </View>
 
@@ -703,6 +788,37 @@ export default function ManageScheduleScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Date Picker Modal */}
+      {showDatePicker && (
+        <DateTimePicker
+          value={getDateObj(date)}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onDateChange}
+          minimumDate={new Date()}
+        />
+      )}
+
+      {/* Start Time Picker Modal */}
+      {showStartTimePicker && (
+        <DateTimePicker
+          value={getTimeObj(startTime)}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onStartTimeChange}
+        />
+      )}
+
+      {/* End Time Picker Modal */}
+      {showEndTimePicker && (
+        <DateTimePicker
+          value={getTimeObj(endTime)}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+          onChange={onEndTimeChange}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -987,5 +1103,18 @@ const styles = StyleSheet.create({
     color: '#FFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  pickerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  pickerText: {
+    fontSize: 14,
+    fontWeight: '500',
   },
 });

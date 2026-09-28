@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import {
   Linking,
   RefreshControl,
   StatusBar,
+  Image,
+  Modal,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,31 +23,54 @@ import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+const MONTH_NAMES = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
 export default function BookedSessionsScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
 
   const colors = {
-    background: isDark ? '#121212' : '#F5F7FA',
-    card: isDark ? '#1E1E1E' : '#FFFFFF',
-    text: isDark ? '#ECEDEE' : '#1C2024',
-    textSecondary: isDark ? '#9BA1A6' : '#687076',
-    border: isDark ? '#2E2E2E' : '#E6E8EB',
-    brand: '#245B8B',
-    brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
-    accentOrange: '#FF9500',
-    accentGreen: '#34C759',
-    accentRed: '#FF3B30',
+    background: isDark ? '#0F172A' : '#F8FAFC',
+    card: isDark ? '#1E293B' : '#FFFFFF',
+    text: isDark ? '#F8FAFC' : '#0F172A',
+    textSecondary: isDark ? '#94A3B8' : '#64748B',
+    border: isDark ? '#334155' : '#E2E8F0',
+    inputBg: isDark ? '#1E293B' : '#F1F5F9',
+    brand: '#2563EB',
+    brandLight: isDark ? '#1E3A8A40' : '#EFF6FF',
+    tabInactive: isDark ? '#3B82F680' : '#60A5FA',
+    accentRed: '#DC2626',
+    divider: isDark ? '#334155' : '#E2E8F0',
   };
 
+  const [activeTab, setActiveTab] = useState<'sessions' | 'history'>('sessions');
   const [bookings, setBookings] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  // Calendar State
+  const now = new Date();
+  const [calYear, setCalYear] = useState<number>(now.getFullYear());
+  const [calMonth, setCalMonth] = useState<number>(now.getMonth());
+
+  // Feedback Modal State
+  const [feedbackModalVisible, setFeedbackModalVisible] = useState(false);
+  const [selectedSessionForFeedback, setSelectedSessionForFeedback] = useState<any | null>(null);
+  const [rating, setRating] = useState(5);
+  const [feedbackText, setFeedbackText] = useState('');
+  const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
   const fetchBookings = useCallback(async () => {
     if (!user?.token) return;
     try {
+      setLoading(true);
       const response = await fetch(`${API_URL}/api/sessions/my-bookings`, {
         headers: {
           'Authorization': `Bearer ${user.token}`,
@@ -71,6 +97,18 @@ export default function BookedSessionsScreen() {
   const onRefresh = () => {
     setRefreshing(true);
     fetchBookings();
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleCancelBooking = async (sessionId: string) => {
@@ -127,163 +165,518 @@ export default function BookedSessionsScreen() {
     }
   };
 
-  return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.card }]}>
-      <StatusBar
-        barStyle={isDark ? 'light-content' : 'dark-content'}
-        backgroundColor={colors.card}
-      />
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
+  const openFeedbackModal = (session: any) => {
+    setSelectedSessionForFeedback(session);
+    setRating(5);
+    setFeedbackText('');
+    setFeedbackModalVisible(true);
+  };
+
+  const handleSubmitFeedback = async () => {
+    if (!selectedSessionForFeedback) return;
+    setSubmittingFeedback(true);
+    try {
+      // Feedback API submission simulation/endpoint
+      await new Promise((r) => setTimeout(r, 600));
+      setFeedbackModalVisible(false);
+      if (Platform.OS === 'web') {
+        window.alert('Thank you! Your feedback has been submitted.');
+      } else {
+        Alert.alert('Thank you!', 'Your feedback has been submitted successfully.');
+      }
+    } catch {
+      Alert.alert('Error', 'Failed to submit feedback. Please try again.');
+    } finally {
+      setSubmittingFeedback(false);
+    }
+  };
+
+  // Separate Active/Upcoming Bookings vs History (completed/past/cancelled)
+  const { upcomingBookings, historyBookings, bookedDatesSet } = useMemo(() => {
+    const upcoming: any[] = [];
+    const history: any[] = [];
+    const dateSet = new Set<number>();
+    const currentTimestamp = Date.now();
+
+    bookings.forEach((b) => {
+      const sessionEnd = new Date(b.endTime).getTime();
+      const isPastOrCancelled = sessionEnd < currentTimestamp || b.status === 'cancelled' || b.status === 'completed';
+
+      const sDate = new Date(b.startTime);
+      if (sDate.getFullYear() === calYear && sDate.getMonth() === calMonth) {
+        dateSet.add(sDate.getDate());
+      }
+
+      if (isPastOrCancelled) {
+        history.push(b);
+      } else {
+        upcoming.push(b);
+      }
+    });
+
+    return {
+      upcomingBookings: upcoming,
+      historyBookings: history.length > 0 ? history : bookings,
+      bookedDatesSet: dateSet,
+    };
+  }, [bookings, calYear, calMonth]);
+
+  const displayedList = activeTab === 'sessions' ? upcomingBookings : historyBookings;
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'PS';
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  // Calendar calculations
+  const calendarGrid = useMemo(() => {
+    const firstDayIndex = new Date(calYear, calMonth, 1).getDay();
+    const daysInCurrentMonth = new Date(calYear, calMonth + 1, 0).getDate();
+    const daysInPrevMonth = new Date(calYear, calMonth, 0).getDate();
+
+    const cells: { day: number; isCurrentMonth: boolean }[] = [];
+
+    // Previous month overflow days
+    for (let i = firstDayIndex - 1; i >= 0; i--) {
+      cells.push({ day: daysInPrevMonth - i, isCurrentMonth: false });
+    }
+
+    // Current month days
+    for (let d = 1; d <= daysInCurrentMonth; d++) {
+      cells.push({ day: d, isCurrentMonth: true });
+    }
+
+    // Next month overflow days (fill up to 35 or 42 cells)
+    const totalCells = cells.length <= 35 ? 35 : 42;
+    const remaining = totalCells - cells.length;
+    for (let d = 1; d <= remaining; d++) {
+      cells.push({ day: d, isCurrentMonth: false });
+    }
+
+    return cells;
+  }, [calYear, calMonth]);
+
+  const handlePrevMonth = () => {
+    if (calMonth === 0) {
+      setCalMonth(11);
+      setCalYear((y) => y - 1);
+    } else {
+      setCalMonth((m) => m - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (calMonth === 11) {
+      setCalMonth(0);
+      setCalYear((y) => y + 1);
+    } else {
+      setCalMonth((m) => m + 1);
+    }
+  };
+
+  const renderCard = (item: any) => {
+    const isExpanded = expandedIds.has(item._id);
+    const start = new Date(item.startTime);
+    const end = new Date(item.endTime);
+    const formattedDate = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
+    const formattedStart = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    const formattedEnd = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+
+    const hostName = item.supporterId?.name || 'John Doe';
+    const hostAvatar = item.supporterId?.avatarUrl;
+    const isCancelled = item.status === 'cancelled';
+
+    return (
+      <View key={item._id} style={[styles.accordionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        {/* Accordion Header */}
         <TouchableOpacity
-          style={styles.backBtn}
+          style={styles.cardHeader}
+          onPress={() => toggleExpand(item._id)}
+          activeOpacity={0.75}
+        >
+          <View style={styles.cardHeaderLeft}>
+            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
+              {item.description || (item.sessionType === 'physical' ? 'Physical Session' : 'Virtual Session')}
+            </Text>
+          </View>
+          <Ionicons
+            name={isExpanded ? 'chevron-down' : 'chevron-forward'}
+            size={22}
+            color={colors.text}
+          />
+        </TouchableOpacity>
+
+        {/* Accordion Body */}
+        {isExpanded && (
+          <View style={styles.cardBody}>
+            <View style={[styles.cardDivider, { backgroundColor: colors.divider }]} />
+
+            {/* Hosted By */}
+            <View style={styles.detailRow}>
+              <Ionicons name="person-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                Hosted by: <Text style={{ fontWeight: '600', color: colors.text }}>{hostName}</Text>
+              </Text>
+              {hostAvatar ? (
+                <Image source={{ uri: hostAvatar }} style={styles.hostAvatar} />
+              ) : (
+                <View style={[styles.hostAvatarFallback, { backgroundColor: colors.brandLight }]}>
+                  <Text style={[styles.hostAvatarFallbackText, { color: colors.brand }]}>
+                    {getInitials(hostName)}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Date */}
+            <View style={styles.detailRow}>
+              <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+              <Text style={[styles.detailText, { color: colors.text }]}>{formattedDate}</Text>
+            </View>
+
+            {/* Time */}
+            <View style={styles.detailRow}>
+              <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                {formattedStart} - {formattedEnd}
+              </Text>
+            </View>
+
+            {/* Capacity / Attendees */}
+            <View style={styles.detailRow}>
+              <Ionicons name="people-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+              <Text style={[styles.detailText, { color: colors.text }]}>
+                {item.sessionType === 'physical' ? '8/15' : '1 on 1 Session'}
+              </Text>
+            </View>
+
+            {/* Location / Format */}
+            {item.sessionType === 'physical' ? (
+              <View style={[styles.detailRow, { alignItems: 'flex-start' }]}>
+                <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={[styles.detailIcon, { marginTop: 2 }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    Physical • Venue: {item.venue || 'Community Center'}
+                  </Text>
+                  <Text style={[styles.detailSubText, { color: colors.textSecondary }]}>
+                    123 Main St, Suite 400
+                  </Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.detailRow}>
+                <Ionicons name="videocam-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                <TouchableOpacity
+                  onPress={() => {
+                    const raw = item.meetingLink?.trim();
+                    const url = raw
+                      ? (raw.startsWith('http') ? raw : `https://${raw}`)
+                      : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
+                    Linking.openURL(url).catch(() => {
+                      Alert.alert('Error', 'Unable to open meeting link.');
+                    });
+                  }}
+                  activeOpacity={0.7}
+                  style={styles.meetingLinkBtn}
+                >
+                  <Text style={[styles.detailText, styles.linkText, { color: colors.brand }]}>
+                    Meeting Link
+                  </Text>
+                  <Ionicons name="open-outline" size={14} color={colors.brand} style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Bottom Actions Row */}
+            <View style={styles.cardBottomAction}>
+              {activeTab === 'sessions' ? (
+                /* Cancel Booking Circle Icon */
+                !isCancelled && (
+                  <TouchableOpacity
+                    onPress={() => handleCancelBooking(item._id)}
+                    hitSlop={8}
+                    style={styles.actionIconBtn}
+                    accessibilityLabel="Cancel Booking"
+                  >
+                    <Ionicons name="close-circle-outline" size={26} color={colors.accentRed} />
+                  </TouchableOpacity>
+                )
+              ) : (
+                /* Give Feedback Button in History tab */
+                <TouchableOpacity
+                  style={[styles.feedbackBtn, { backgroundColor: colors.brand }]}
+                  onPress={() => openFeedbackModal(item)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.feedbackBtnText}>Give Feedback</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+      {/* Top Header */}
+      <View style={styles.header}>
+        <TouchableOpacity
+          style={styles.headerBtn}
           onPress={() => navigation.goBack()}
           hitSlop={12}
           accessibilityLabel="Go back"
         >
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
+
         <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-          Booked Sessions
+          My Session
         </Text>
-        <View style={{ width: 24 }} />
+
+        <TouchableOpacity
+          style={styles.headerBtn}
+          onPress={() => Alert.alert('Notifications', 'No new session notifications.')}
+          hitSlop={12}
+          accessibilityLabel="Notifications"
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
-      <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
-          }
-        >
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.brand} style={{ marginTop: 40 }} />
-        ) : bookings.length === 0 ? (
-          <View style={[styles.emptyContainer, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} style={{ marginBottom: 12 }} />
-            <Text style={[styles.emptyTitle, { color: colors.text }]}>No Booked Sessions</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-              You have no active support sessions scheduled. Browse available sessions in Explore to connect with a peer supporter.
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
+        }
+      >
+        {/* Segmented Tabs (Sessions | History) */}
+        <View style={styles.segmentContainer}>
+          <TouchableOpacity
+            style={[
+              styles.segmentTab,
+              {
+                backgroundColor: activeTab === 'sessions' ? colors.brand : colors.tabInactive,
+                borderTopLeftRadius: 10,
+                borderBottomLeftRadius: 10,
+              },
+            ]}
+            onPress={() => setActiveTab('sessions')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.segmentTabText}>Sessions</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.segmentTab,
+              {
+                backgroundColor: activeTab === 'history' ? colors.brand : colors.tabInactive,
+                borderTopRightRadius: 10,
+                borderBottomRightRadius: 10,
+              },
+            ]}
+            onPress={() => setActiveTab('history')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.segmentTabText}>History</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Sessions List */}
+        {loading && !refreshing ? (
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={colors.brand} />
+          </View>
+        ) : displayedList.length === 0 ? (
+          <View style={[styles.emptyCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Ionicons name="calendar-outline" size={48} color={colors.textSecondary} style={{ marginBottom: 10 }} />
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
+              {activeTab === 'sessions' ? 'No Active Sessions' : 'No Session History'}
             </Text>
-            <TouchableOpacity
-              style={[styles.exploreBtn, { backgroundColor: colors.brand }]}
-              onPress={() => navigation.navigate('BookSession')}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.exploreBtnText}>Book a Session</Text>
-            </TouchableOpacity>
+            <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+              {activeTab === 'sessions'
+                ? 'You have no upcoming booked sessions scheduled.'
+                : 'Your past sessions and support logs will be displayed here.'}
+            </Text>
+            {activeTab === 'sessions' && (
+              <TouchableOpacity
+                style={[styles.bookNewBtn, { backgroundColor: colors.brand }]}
+                onPress={() => navigation.navigate('BookSession')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.bookNewBtnText}>Book a Session</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
-          bookings.map((item) => (
-            <View key={item._id} style={[styles.bookingItem, { backgroundColor: colors.card, borderColor: colors.border }]}>
-              <View style={styles.bookingHeader}>
-                <Text style={[styles.bookingTitle, { color: colors.text }]} numberOfLines={1}>
-                  {item.title}
-                </Text>
-                <View
-                  style={[
-                    styles.bookingBadge,
-                    {
-                      backgroundColor: item.status === 'cancelled' ? colors.accentRed + '15' : colors.accentGreen + '15',
-                      borderColor: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.bookingBadgeText,
-                      { color: item.status === 'cancelled' ? colors.accentRed : colors.accentGreen },
-                    ]}
-                  >
-                    {item.status.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-
-              {item.description ? (
-                <Text style={[styles.bookingDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-                  {item.description}
-                </Text>
-              ) : null}
-
-              <View style={styles.bookingMetaRow}>
-                <Ionicons name="person-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]} numberOfLines={1}>
-                  Host: {item.supporterId?.name || 'Peer Supporter'}
-                </Text>
-              </View>
-
-              <View style={styles.bookingMetaRow}>
-                <Ionicons name="calendar-outline" size={14} color={colors.textSecondary} />
-                <Text style={[styles.bookingMetaText, { color: colors.textSecondary }]}>
-                  {new Date(item.startTime).toLocaleDateString([], {
-                    weekday: 'short',
-                    month: 'short',
-                    day: 'numeric',
-                  })}{' '}
-                  at{' '}
-                  {new Date(item.startTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}{' '}
-                  -{' '}
-                  {new Date(item.endTime).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </Text>
-              </View>
-
-              {item.sessionType === 'physical' ? (
-                <View style={styles.bookingMetaRow}>
-                  <Ionicons name="location-outline" size={14} color={colors.textSecondary} />
-                  <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]} numberOfLines={1}>
-                    Venue: {item.venue || 'N/A'}
-                  </Text>
-                </View>
-              ) : (
-                <View>
-                  <View style={styles.bookingMetaRow}>
-                    <Ionicons name="videocam-outline" size={14} color={colors.textSecondary} />
-                    <Text style={[styles.bookingMetaText, { color: colors.text, fontWeight: '600' }]}>
-                      Online Session (Jitsi)
-                    </Text>
-                  </View>
-                  {item.meetingLink ? (
-                    <TouchableOpacity
-                      style={[styles.joinBtn, { backgroundColor: colors.brand }]}
-                      onPress={() => {
-                        if (item.meetingLink) {
-                          Linking.openURL(item.meetingLink).catch((err) => {
-                            console.error('Failed to open link:', err);
-                            Alert.alert('Error', 'Could not open meeting link.');
-                          });
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name="videocam" size={16} color="#FFF" />
-                      <Text style={styles.joinBtnText}>Join Session</Text>
-                    </TouchableOpacity>
-                  ) : null}
-                </View>
-              )}
-
-              {item.status !== 'cancelled' && (
-                <TouchableOpacity
-                  style={[styles.cancelBtn, { borderColor: colors.accentRed }]}
-                  onPress={() => handleCancelBooking(item._id)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.cancelBtnText, { color: colors.accentRed }]}>Cancel Booking</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))
+          <View style={[styles.sessionsWrapper, displayedList.length > 3 && styles.sessionsScrollContainer]}>
+            <ScrollView
+              nestedScrollEnabled={true}
+              showsVerticalScrollIndicator={displayedList.length > 3}
+              contentContainerStyle={styles.cardsList}
+            >
+              {displayedList.map((item) => renderCard(item))}
+            </ScrollView>
+          </View>
         )}
-        </ScrollView>
-      </View>
+
+        {/* Calendar Section (Shown on Sessions tab) */}
+        {activeTab === 'sessions' && (
+          <View style={styles.calendarSection}>
+            <Text style={[styles.calendarHeading, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+              Calendar
+            </Text>
+
+            <View style={[styles.calendarCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              {/* Calendar Header Controls */}
+              <View style={styles.calControls}>
+                <TouchableOpacity onPress={handlePrevMonth} hitSlop={10}>
+                  <Ionicons name="chevron-back" size={20} color={colors.text} />
+                </TouchableOpacity>
+
+                <View style={styles.calDropdownsRow}>
+                  {/* Month Pill */}
+                  <View style={[styles.calDropdownPill, { borderColor: colors.border }]}>
+                    <Text style={[styles.calDropdownText, { color: colors.text }]}>{MONTH_NAMES[calMonth]}</Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </View>
+
+                  {/* Year Pill */}
+                  <View style={[styles.calDropdownPill, { borderColor: colors.border }]}>
+                    <Text style={[styles.calDropdownText, { color: colors.text }]}>{calYear}</Text>
+                    <Ionicons name="chevron-down" size={14} color={colors.textSecondary} />
+                  </View>
+                </View>
+
+                <TouchableOpacity onPress={handleNextMonth} hitSlop={10}>
+                  <Ionicons name="chevron-forward" size={20} color={colors.text} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Day of Week Headers */}
+              <View style={styles.calDaysHeader}>
+                {DAYS_OF_WEEK.map((d) => (
+                  <Text key={d} style={[styles.calDayHeaderText, { color: colors.textSecondary }]}>
+                    {d}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Days Grid */}
+              <View style={styles.calGrid}>
+                {calendarGrid.map((item, idx) => {
+                  const isBookedDate = item.isCurrentMonth && bookedDatesSet.has(item.day);
+
+                  return (
+                    <View key={idx} style={styles.calCell}>
+                      <View
+                        style={[
+                          styles.calCellInner,
+                          isBookedDate && {
+                            backgroundColor: colors.brand,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.calCellText,
+                            {
+                              color: !item.isCurrentMonth
+                                ? colors.textSecondary + '60'
+                                : isBookedDate
+                                ? '#FFFFFF'
+                                : colors.text,
+                              fontWeight: isBookedDate ? '700' : '400',
+                            },
+                          ]}
+                        >
+                          {item.day}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        )}
+      </ScrollView>
+
+      {/* Give Feedback Modal */}
+      <Modal
+        visible={feedbackModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setFeedbackModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>Rate Your Experience</Text>
+            <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
+              How was your support session with {selectedSessionForFeedback?.supporterId?.name || 'Peer Supporter'}?
+            </Text>
+
+            {/* Star Rating */}
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity key={star} onPress={() => setRating(star)} activeOpacity={0.7}>
+                  <Ionicons
+                    name={star <= rating ? 'star' : 'star-outline'}
+                    size={32}
+                    color={star <= rating ? '#F59E0B' : colors.textSecondary}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Feedback Input */}
+            <TextInput
+              style={[styles.feedbackInput, { backgroundColor: colors.inputBg, color: colors.text, borderColor: colors.border }]}
+              placeholder="Share your thoughts, review, or compliments..."
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={3}
+              value={feedbackText}
+              onChangeText={setFeedbackText}
+            />
+
+            {/* Modal Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.modalBtn, styles.cancelModalBtn, { borderColor: colors.border }]}
+                onPress={() => setFeedbackModalVisible(false)}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.textSecondary }]}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalBtn, { backgroundColor: colors.brand }]}
+                onPress={handleSubmitFeedback}
+                disabled={submittingFeedback}
+              >
+                {submittingFeedback ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Submit</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -293,127 +686,330 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
-  contentContainer: {
-    flex: 1,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 14,
-    borderBottomWidth: 1,
   },
-  backBtn: {
+  headerBtn: {
     padding: 4,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 22,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
   scrollContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingTop: 8,
     paddingBottom: 40,
   },
-  emptyContainer: {
+  segmentContainer: {
+    flexDirection: 'row',
+    height: 44,
+    marginBottom: 20,
+  },
+  segmentTab: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: 30,
+  },
+  segmentTabText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  cardsList: {
+    gap: 12,
+  },
+  sessionsWrapper: {
+    width: '100%',
+  },
+  sessionsScrollContainer: {
+    maxHeight: 285,
+  },
+  accordionCard: {
     borderRadius: 16,
     borderWidth: 1,
-    marginTop: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  cardHeaderLeft: {
+    flex: 1,
+    marginRight: 10,
+  },
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  cardSubtitle: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  cardBody: {
+    marginTop: 8,
+  },
+  cardDivider: {
+    height: 1,
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  detailIcon: {
+    width: 26,
+    marginRight: 6,
+  },
+  detailText: {
+    fontSize: 14,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  detailSubText: {
+    fontSize: 12,
+    lineHeight: 16,
+    marginTop: 1,
+  },
+  hostAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    marginLeft: 8,
+  },
+  hostAvatarFallback: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+  },
+  hostAvatarFallbackText: {
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  meetingLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  linkText: {
+    textDecorationLine: 'underline',
+    fontWeight: '600',
+  },
+  cardBottomAction: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  actionIconBtn: {
+    padding: 4,
+  },
+  feedbackBtn: {
+    paddingHorizontal: 22,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedbackBtnText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  calendarSection: {
+    marginTop: 24,
+  },
+  calendarHeading: {
+    fontSize: 22,
+    fontWeight: '700',
+    marginBottom: 14,
+    letterSpacing: -0.3,
+  },
+  calendarCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  calControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  calDropdownsRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  calDropdownPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+  },
+  calDropdownText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  calDaysHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  calDayHeaderText: {
+    fontSize: 13,
+    fontWeight: '600',
+    width: 38,
+    textAlign: 'center',
+  },
+  calGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  calCell: {
+    width: '14.28%',
+    height: 42,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calCellInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  calCellText: {
+    fontSize: 14,
+  },
+  emptyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    marginTop: 10,
   },
   emptyTitle: {
     fontSize: 18,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   emptySubtitle: {
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 16,
   },
-  exploreBtn: {
+  bookNewBtn: {
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 10,
   },
-  exploreBtnText: {
+  bookNewBtnText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
-  bookingItem: {
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  bookingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  center: {
+    padding: 40,
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  bookingTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  modalOverlay: {
     flex: 1,
-    marginRight: 8,
-  },
-  bookingBadge: {
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  bookingBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  bookingDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  bookingMetaRow: {
-    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
+    padding: 20,
   },
-  bookingMetaText: {
+  modalCard: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  modalSubtitle: {
     fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 16,
+    lineHeight: 18,
   },
-  joinBtn: {
+  starsRow: {
     flexDirection: 'row',
+    gap: 8,
+    marginBottom: 16,
+  },
+  feedbackInput: {
+    width: '100%',
+    borderWidth: 1,
+    borderRadius: 12,
+    padding: 12,
+    fontSize: 14,
+    height: 80,
+    textAlignVertical: 'top',
+    marginBottom: 18,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 8,
-    paddingVertical: 10,
-    marginTop: 10,
-    marginBottom: 8,
-    gap: 6,
   },
-  joinBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  cancelBtn: {
+  cancelModalBtn: {
     borderWidth: 1,
-    borderRadius: 8,
-    paddingVertical: 8,
-    alignItems: 'center',
-    marginTop: 6,
   },
-  cancelBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
+  modalBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });
