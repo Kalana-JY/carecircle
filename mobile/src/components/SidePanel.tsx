@@ -249,7 +249,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               </Text>
             </TouchableOpacity>
 
-            {/* My Profile */}
+            {/* Account */}
             <TouchableOpacity
               style={styles.menuItem}
               activeOpacity={0.7}
@@ -263,7 +263,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               <Text
                 style={[styles.menuItemText, { color: colors.text }]}
               >
-                My Profile
+                Account
               </Text>
             </TouchableOpacity>
 

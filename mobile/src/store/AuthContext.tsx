@@ -9,6 +9,9 @@ export interface UserSession {
   phoneNumber: string;
   token: string;
   isAdmin?: boolean;
+  gender?: string;
+  dateOfBirth?: string;
+  avatarUrl?: string;
 }
 
 interface AuthContextType {
@@ -17,6 +20,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (name: string, email: string, phoneNumber: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  updateUser: (updatedData: Partial<UserSession>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -105,8 +109,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateUser = async (updatedData: Partial<UserSession>) => {
+    try {
+      if (!user) return;
+      const updatedSession: UserSession = { ...user, ...updatedData };
+      await tokenStorage.setItem('user_session', JSON.stringify(updatedSession));
+      setUser(updatedSession);
+    } catch (error) {
+      console.error('[AuthContext] UpdateUser Error:', error);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, signIn, signUp, signOut, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

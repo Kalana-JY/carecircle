@@ -11,6 +11,7 @@ import {
   Alert,
   Linking,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
@@ -127,7 +128,11 @@ export default function BookedSessionsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.card }]}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'dark-content'}
+        backgroundColor={colors.card}
+      />
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border, backgroundColor: colors.card }]}>
         <TouchableOpacity
@@ -144,13 +149,14 @@ export default function BookedSessionsScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
-        }
-      >
+      <View style={[styles.contentContainer, { backgroundColor: colors.background }]}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[colors.brand]} />
+          }
+        >
         {loading ? (
           <ActivityIndicator size="large" color={colors.brand} style={{ marginTop: 40 }} />
         ) : bookings.length === 0 ? (
@@ -276,13 +282,18 @@ export default function BookedSessionsScreen() {
             </View>
           ))
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safeArea: {
+    flex: 1,
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  contentContainer: {
     flex: 1,
   },
   header: {
