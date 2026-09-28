@@ -2,6 +2,19 @@ const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
 const User = require('../models/User');
 
+const mapMessage = (msg, currentUserId) => ({
+  _id: msg._id,
+  conversationId: msg.conversationId,
+  senderId: msg.senderId._id || msg.senderId,
+  senderName: msg.senderId.name || 'Unknown',
+  content: msg.content,
+  readBy: msg.readBy,
+  isEdited: !!msg.isEdited,
+  isMine: (msg.senderId._id || msg.senderId).toString() === currentUserId.toString(),
+  createdAt: msg.createdAt,
+  updatedAt: msg.updatedAt,
+});
+
 const mapConversation = (conv, currentUserId) => ({
   _id: conv._id,
   type: conv.type,
@@ -187,16 +200,7 @@ const getMessages = async (req, res) => {
     });
 
     res.json({
-      items: messages.reverse().map((msg) => ({
-        _id: msg._id,
-        conversationId: msg.conversationId,
-        senderId: msg.senderId._id,
-        senderName: msg.senderId.name,
-        content: msg.content,
-        readBy: msg.readBy,
-        isMine: msg.senderId._id.toString() === req.user._id.toString(),
-        createdAt: msg.createdAt,
-      })),
+      items: messages.reverse().map((msg) => mapMessage(msg, req.user._id)),
       meta: { page, limit, total },
     });
   } catch (error) {
@@ -234,16 +238,7 @@ const sendMessage = async (req, res) => {
 
     const populated = await Message.findById(message._id).populate('senderId', 'name');
 
-    res.status(201).json({
-      _id: populated._id,
-      conversationId: populated.conversationId,
-      senderId: populated.senderId._id,
-      senderName: populated.senderId.name,
-      content: populated.content,
-      readBy: populated.readBy,
-      isMine: true,
-      createdAt: populated.createdAt,
-    });
+    res.status(201).json(mapMessage(populated, req.user._id));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -276,6 +271,88 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// @desc    Edit own message
+// @route   PUT /api/conversations/:id/messages/:messageId
+// @access  Private
+const editMessage = async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    const conversation = await Conversation.findOne({
+      _id: req.params.id,
+      participants: req.user._id,
+      deletedAt: null,
+    });
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+
+    const message = await Message.findOne({
+      _id: req.params.messageId,
+      conversationId: conversation._id,
+      deletedAt: null,
+    });
+    if (!message) return res.status(404).json({ message: 'Message not found' });
+
+    if (message.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to edit this message' });
+    }
+
+    message.content = content.trim();
+    message.isEdited = true;
+    await message.save();
+
+    const populated = await Message.findById(message._id).populate('senderId', 'name');
+    res.json(mapMessage(populated, req.user._id));
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Delete own message (soft delete)
+// @route   DELETE /api/conversations/:id/messages/:messageId
+// @access  Private
+const deleteMessage = async (req, res) => {
+  try {
+    const conversation = await Conversation.findOne({
+      _id: req.params.id,
+      participants: req.user._id,
+      deletedAt: null,
+    });
+    if (!conversation) return res.status(404).json({ message: 'Conversation not found' });
+
+    const message = await Message.findOne({
+      _id: req.params.messageId,
+      conversationId: conversation._id,
+      deletedAt: null,
+    });
+    if (!message) return res.status(404).json({ message: 'Message not found' });
+
+    if (message.senderId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Not authorized to delete this message' });
+    }
+
+    message.deletedAt = new Date();
+    await message.save();
+
+    // If deleted message was the last message, point to the newest remaining one
+    if (conversation.lastMessage?.toString() === message._id.toString()) {
+      const newest = await Message.findOne({
+        conversationId: conversation._id,
+        deletedAt: null,
+      }).sort({ createdAt: -1 });
+      conversation.lastMessage = newest ? newest._id : null;
+      conversation.lastMessageAt = newest ? newest.createdAt : null;
+      await conversation.save();
+    }
+
+    res.json({ message: 'Message deleted', _id: message._id });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 // @desc    List all users (for starting DMs / adding to groups)
 // @route   GET /api/conversations/users
 // @access  Private
@@ -301,6 +378,8 @@ module.exports = {
   createGroup,
   getMessages,
   sendMessage,
+  editMessage,
+  deleteMessage,
   markAsRead,
   listUsers,
 };

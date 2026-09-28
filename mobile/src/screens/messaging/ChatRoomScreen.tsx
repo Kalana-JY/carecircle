@@ -20,10 +20,14 @@ import {
   connectSocket,
   getSocket,
   onMessage,
+  onMessageUpdated,
+  onMessageDeleted,
   onTyping,
   onStopTyping,
   onMessagesRead,
   sendMessage,
+  editMessage as emitEditMessage,
+  deleteMessage as emitDeleteMessage,
   emitTyping,
   emitStopTyping,
   emitMarkRead,
@@ -59,6 +63,7 @@ export default function ChatRoomScreen() {
 
   const [messages, setMessages] = useState<MessagePayload[]>([]);
   const [inputText, setInputText] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTyping, setIsTyping] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
@@ -106,6 +111,18 @@ export default function ChatRoomScreen() {
             const isMine = senderStr === myStr;
             console.log(`[ChatRoom] msg senderId=${senderStr} myId=${myStr} isMine=${isMine}`);
             setMessages((prev) => [...prev, { ...msg, isMine }]);
+          }),
+          onMessageUpdated((msg) => {
+            if (msg.conversationId !== conversationId || !mountedRef.current) return;
+            const senderStr = String(msg.senderId);
+            const isMine = senderStr === String(myId);
+            setMessages((prev) =>
+              prev.map((m) => (m._id === msg._id ? { ...msg, isMine } : m))
+            );
+          }),
+          onMessageDeleted((data) => {
+            if (data.conversationId !== conversationId || !mountedRef.current) return;
+            setMessages((prev) => prev.filter((m) => m._id !== data._id));
           }),
           onTyping((data) => {
             if (data.conversationId === conversationId && String(data.userId) !== myId && mountedRef.current) {
@@ -157,9 +174,86 @@ export default function ChatRoomScreen() {
   const handleSend = () => {
     const text = inputText.trim();
     if (!text) return;
+    if (editingId) {
+      handleSaveEdit(text);
+      return;
+    }
     sendMessage(conversationId, text);
     setInputText('');
     emitStopTyping(conversationId);
+  };
+
+  const startEdit = (messageId: string, content: string) => {
+    setEditingId(messageId);
+    setInputText(content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setInputText('');
+  };
+
+  const handleSaveEdit = async (text: string) => {
+    if (!editingId) return;
+    const messageId = editingId;
+    const sock = getSocket();
+    try {
+      if (sock?.connected) {
+        emitEditMessage(conversationId, messageId, text);
+      } else {
+        // REST fallback when socket is unavailable
+        const updated = await apiFetch<MessagePayload>(
+          `/api/conversations/${conversationId}/messages/${messageId}`,
+          { method: 'PUT', body: { content: text } }
+        );
+        setMessages((prev) =>
+          prev.map((m) => (m._id === messageId ? { ...updated, isMine: true } : m))
+        );
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to edit message');
+      return;
+    }
+    setEditingId(null);
+    setInputText('');
+    emitStopTyping(conversationId);
+  };
+
+  const handleDelete = (messageId: string) => {
+    Alert.alert('Delete message?', 'This message will be removed for everyone.', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          const sock = getSocket();
+          try {
+            if (sock?.connected) {
+              emitDeleteMessage(conversationId, messageId);
+              // Optimistic removal in case broadcast is delayed
+              setMessages((prev) => prev.filter((m) => m._id !== messageId));
+            } else {
+              await apiFetch(`/api/conversations/${conversationId}/messages/${messageId}`, {
+                method: 'DELETE',
+              });
+              setMessages((prev) => prev.filter((m) => m._id !== messageId));
+            }
+            if (editingId === messageId) cancelEdit();
+          } catch (error: any) {
+            Alert.alert('Error', error.message || 'Failed to delete message');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleLongPress = (item: MessagePayload) => {
+    if (!item.isMine) return;
+    Alert.alert('Message options', undefined, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Edit', onPress: () => startEdit(item._id, item.content) },
+      { text: 'Delete', style: 'destructive', onPress: () => handleDelete(item._id) },
+    ]);
   };
 
   const handleTextChange = (text: string) => {
@@ -174,7 +268,11 @@ export default function ChatRoomScreen() {
   const renderMessage = ({ item }: { item: MessagePayload }) => {
     const isMine = item.isMine;
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.85}
+        delayLongPress={400}
+        onLongPress={() => handleLongPress(item)}
+        disabled={!isMine}
         style={[
           styles.messageBubble,
           isMine
@@ -188,10 +286,17 @@ export default function ChatRoomScreen() {
         <Text style={[styles.messageText, { color: isMine ? '#FFFFFF' : colors.text }]}>
           {item.content}
         </Text>
-        <Text style={[styles.messageTime, { color: isMine ? '#D0D0D0' : colors.textSecondary }]}>
-          {timeAgo(item.createdAt)}
-        </Text>
-      </View>
+        <View style={styles.messageMeta}>
+          {item.isEdited ? (
+            <Text style={[styles.editedLabel, { color: isMine ? '#E0E0E0' : colors.textSecondary }]}>
+              edited ·{' '}
+            </Text>
+          ) : null}
+          <Text style={[styles.messageTime, { color: isMine ? '#D0D0D0' : colors.textSecondary }]}>
+            {timeAgo(item.createdAt)}
+          </Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -244,12 +349,21 @@ export default function ChatRoomScreen() {
             }
           />
 
+          {editingId ? (
+            <View style={[styles.editBanner, { backgroundColor: colors.brandLight, borderColor: colors.border }]}>
+              <Text style={[styles.editBannerText, { color: colors.text }]}>Editing message</Text>
+              <TouchableOpacity onPress={cancelEdit} style={styles.editCancelBtn}>
+                <Ionicons name="close" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
+          ) : null}
+
           <View style={[styles.inputBar, { backgroundColor: colors.card, borderTopColor: colors.border }]}>
             <TextInput
               style={[styles.input, { backgroundColor: colors.inputBg, color: colors.text }]}
               value={inputText}
               onChangeText={handleTextChange}
-              placeholder="Type a message..."
+              placeholder={editingId ? 'Edit message...' : 'Type a message...'}
               placeholderTextColor={colors.textSecondary}
               multiline
               maxLength={2000}
@@ -260,7 +374,7 @@ export default function ChatRoomScreen() {
               disabled={!inputText.trim()}
               activeOpacity={0.8}
             >
-              <Ionicons name="send" size={18} color="#FFFFFF" />
+              <Ionicons name={editingId ? 'checkmark' : 'send'} size={18} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -294,7 +408,19 @@ const styles = StyleSheet.create({
   },
   senderName: { fontSize: 11, fontWeight: '700', marginBottom: 2 },
   messageText: { fontSize: 15, lineHeight: 20 },
-  messageTime: { fontSize: 10, marginTop: 4, alignSelf: 'flex-end' },
+  messageMeta: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', marginTop: 4 },
+  editedLabel: { fontSize: 10, fontStyle: 'italic' },
+  messageTime: { fontSize: 10, alignSelf: 'flex-end' },
+  editBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+  },
+  editBannerText: { fontSize: 12, fontWeight: '600' },
+  editCancelBtn: { padding: 4 },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
