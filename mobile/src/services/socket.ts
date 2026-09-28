@@ -14,7 +14,16 @@ export interface MessagePayload {
   content: string;
   readBy: string[];
   isMine: boolean;
+  isEdited?: boolean;
   createdAt: string;
+  updatedAt?: string;
+}
+
+export interface MessageUpdatedPayload extends MessagePayload {}
+
+export interface MessageDeletedPayload {
+  _id: string;
+  conversationId: string;
 }
 
 export interface TypingPayload {
@@ -152,8 +161,28 @@ export function onMessagesRead(callback: (data: ReadPayload) => void): () => voi
   return () => { socket?.off('messages_read', callback); };
 }
 
+export function onMessageUpdated(callback: (msg: MessageUpdatedPayload) => void): () => void {
+  if (!socket) return () => {};
+  socket.on('message_updated', callback);
+  return () => { socket?.off('message_updated', callback); };
+}
+
+export function onMessageDeleted(callback: (data: MessageDeletedPayload) => void): () => void {
+  if (!socket) return () => {};
+  socket.on('message_deleted', callback);
+  return () => { socket?.off('message_deleted', callback); };
+}
+
 export function sendMessage(conversationId: string, content: string): void {
   socket?.emit('send_message', { conversationId, content });
+}
+
+export function editMessage(conversationId: string, messageId: string, content: string): void {
+  socket?.emit('edit_message', { conversationId, messageId, content });
+}
+
+export function deleteMessage(conversationId: string, messageId: string): void {
+  socket?.emit('delete_message', { conversationId, messageId });
 }
 
 export function emitTyping(conversationId: string): void {

@@ -156,7 +156,9 @@ io.on('connection', async (socket) => {
         content: message.content,
         readBy: message.readBy.map((id) => id.toString()),
         isMine: false,
+        isEdited: false,
         createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt.toISOString(),
       };
 
       console.log(`[Socket] Message from ${socket.userName} senderId=${senderIdStr} type=${typeof senderIdStr}`);
@@ -166,6 +168,97 @@ io.on('connection', async (socket) => {
     } catch (err) {
       console.error('[Socket] send_message error:', err);
       socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+
+  // ── Edit a message ──
+  socket.on('edit_message', async (data) => {
+    try {
+      const { conversationId, messageId, content } = data;
+      if (!conversationId || !messageId || !content?.trim()) return;
+
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        participants: userId,
+        deletedAt: null,
+      });
+      if (!conversation) return socket.emit('error', { message: 'Conversation not found' });
+
+      const message = await Message.findOne({
+        _id: messageId,
+        conversationId: conversation._id,
+        deletedAt: null,
+      });
+      if (!message) return socket.emit('error', { message: 'Message not found' });
+      if (message.senderId.toString() !== userId.toString()) {
+        return socket.emit('error', { message: 'Not authorized to edit this message' });
+      }
+
+      message.content = content.trim();
+      message.isEdited = true;
+      await message.save();
+
+      io.to(conversation._id.toString()).emit('message_updated', {
+        _id: message._id.toString(),
+        conversationId: conversation._id.toString(),
+        senderId: message.senderId.toString(),
+        senderName: socket.userName,
+        content: message.content,
+        readBy: message.readBy.map((id) => id.toString()),
+        isMine: false,
+        isEdited: true,
+        createdAt: message.createdAt.toISOString(),
+        updatedAt: message.updatedAt.toISOString(),
+      });
+    } catch (err) {
+      console.error('[Socket] edit_message error:', err);
+      socket.emit('error', { message: 'Failed to edit message' });
+    }
+  });
+
+  // ── Delete a message ──
+  socket.on('delete_message', async (data) => {
+    try {
+      const { conversationId, messageId } = data;
+      if (!conversationId || !messageId) return;
+
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        participants: userId,
+        deletedAt: null,
+      });
+      if (!conversation) return socket.emit('error', { message: 'Conversation not found' });
+
+      const message = await Message.findOne({
+        _id: messageId,
+        conversationId: conversation._id,
+        deletedAt: null,
+      });
+      if (!message) return socket.emit('error', { message: 'Message not found' });
+      if (message.senderId.toString() !== userId.toString()) {
+        return socket.emit('error', { message: 'Not authorized to delete this message' });
+      }
+
+      message.deletedAt = new Date();
+      await message.save();
+
+      if (conversation.lastMessage?.toString() === message._id.toString()) {
+        const newest = await Message.findOne({
+          conversationId: conversation._id,
+          deletedAt: null,
+        }).sort({ createdAt: -1 });
+        conversation.lastMessage = newest ? newest._id : null;
+        conversation.lastMessageAt = newest ? newest.createdAt : null;
+        await conversation.save();
+      }
+
+      io.to(conversation._id.toString()).emit('message_deleted', {
+        _id: message._id.toString(),
+        conversationId: conversation._id.toString(),
+      });
+    } catch (err) {
+      console.error('[Socket] delete_message error:', err);
+      socket.emit('error', { message: 'Failed to delete message' });
     }
   });
 
