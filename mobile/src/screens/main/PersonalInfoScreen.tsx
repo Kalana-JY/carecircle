@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,13 +13,14 @@ import {
   Modal,
   StatusBar,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '@/store/AuthContext';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { apiFetch } from '@/services/api';
 
 const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Other', 'Prefer not to say'];
 
@@ -37,8 +38,6 @@ export default function PersonalInfoScreen() {
     inputBg: isDark ? '#1E1E1E' : '#FFFFFF',
     brand: '#245B8B',
     brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
-    roleBadgeBg: isDark ? '#1E254A' : '#E8ECFD',
-    roleBadgeText: isDark ? '#7E95FD' : '#4C60E6',
   };
 
   const [name, setName] = useState(user?.name || '');
@@ -47,10 +46,58 @@ export default function PersonalInfoScreen() {
   const [gender, setGender] = useState(user?.gender || 'Male');
   const [dateOfBirth, setDateOfBirth] = useState(user?.dateOfBirth || '12-25-1998');
   const [avatarUri, setAvatarUri] = useState<string | null>(user?.avatarUrl || null);
+  const [appStatus, setAppStatus] = useState<string>('none');
 
   const [genderModalVisible, setGenderModalVisible] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const fetchApplicationStatus = useCallback(async () => {
+    if (!user?.token) return;
+    try {
+      const data = await apiFetch('/api/peer-supporters/status');
+      if (data && data.status) {
+        setAppStatus(data.status);
+      }
+    } catch (error) {
+      console.error('[PersonalInfo] Failed to fetch application status:', error);
+    }
+  }, [user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchApplicationStatus();
+    }, [fetchApplicationStatus])
+  );
+
+  const getBadgeStyle = () => {
+    if (user?.isAdmin) {
+      return {
+        label: 'Admin',
+        bg: isDark ? '#2C1E40' : '#F3E8FF',
+        text: isDark ? '#C084FC' : '#7E22CE',
+      };
+    }
+    if (appStatus === 'approved') {
+      return {
+        label: 'Peer Supporter',
+        bg: isDark ? '#143825' : '#DBFFE0',
+        text: '#0AC600',
+      };
+    }
+    if (appStatus === 'pending') {
+      return {
+        label: 'Pending',
+        bg: isDark ? '#3D2E14' : '#FFF3CD',
+        text: isDark ? '#FFC107' : '#856404',
+      };
+    }
+    return {
+      label: 'Member',
+      bg: isDark ? '#1E254A' : '#E8ECFD',
+      text: isDark ? '#7E95FD' : '#4C60E6',
+    };
+  };
 
   // Pick avatar image from library
   const handlePickAvatar = async () => {
@@ -174,11 +221,16 @@ export default function PersonalInfoScreen() {
           </View>
 
           {/* Role Pill Badge */}
-          <View style={[styles.roleBadge, { backgroundColor: colors.roleBadgeBg }]}>
-            <Text style={[styles.roleBadgeText, { color: colors.roleBadgeText }]}>
-              {user?.isAdmin ? 'Admin' : 'Member'}
-            </Text>
-          </View>
+          {(() => {
+            const badge = getBadgeStyle();
+            return (
+              <View style={[styles.roleBadge, { backgroundColor: badge.bg }]}>
+                <Text style={[styles.roleBadgeText, { color: badge.text }]}>
+                  {badge.label}
+                </Text>
+              </View>
+            );
+          })()}
         </View>
 
         {/* Form Fields */}
@@ -385,9 +437,9 @@ const styles = StyleSheet.create({
     borderColor: '#FFFFFF',
   },
   roleBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 5,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   roleBadgeText: {
     fontSize: 12,
