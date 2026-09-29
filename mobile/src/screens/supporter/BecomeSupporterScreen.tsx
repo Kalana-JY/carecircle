@@ -31,6 +31,7 @@ export default function BecomeSupporterScreen() {
 
   // Toggle View
   const [showForm, setShowForm] = useState<boolean>(false);
+  const [acknowledged, setAcknowledged] = useState<boolean>(false);
 
   // Form Fields
   const [name, setName] = useState<string>('');
@@ -262,89 +263,97 @@ export default function BecomeSupporterScreen() {
   };
 
   if (!showForm) {
-    // Learn More View
+    // Learn More View matching mockup
     return (
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header */}
           <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={24} color={colors.text} />
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={26} color={colors.text} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
               Become a Peer Supporter
             </Text>
           </View>
-          
-          <Text style={[styles.introText, { color: colors.textSecondary }]}>
-            Share your experiences, host counseling sessions, and make a meaningful difference. Outlined below are our volunteer guidelines, expectations, and benefits.
-          </Text>
 
-          {/* Requirements Section */}
-          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="checkbox-outline" size={22} color={colors.brand} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Requirements</Text>
-            </View>
-            <View style={styles.bullets}>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Must be at least <Text style={{ fontWeight: '700', color: colors.text }}>18 years of age</Text>.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Demonstrates active, compassionate, and non-judgmental listening skills.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Background verification, educational certificates, or professional references in counseling/support.
-              </Text>
-            </View>
+          {/* Combined Policy & Terms Card Container */}
+          <View style={[styles.policyContainerCard, { backgroundColor: isDark ? '#1E1E1E' : '#F7F8FA' }]}>
+            {/* Privacy and Policy */}
+            <Text style={[styles.policySectionTitle, { color: colors.text }]}>
+              Privacy and Policy
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              CareCircle is dedicated to protecting user privacy and maintaining the highest standard of confidentiality. As a Peer Supporter, all shared user stories, conversations, personal details, and session notes are strictly confidential and must never be recorded, shared, or disclosed outside the secure platform environment.
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              Any personal data collected during onboarding and verification is processed solely to assess qualification, verify identity, and maintain safety across our peer network. By joining, you agree not to solicit or collect personally identifiable contact information from community members.
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              In situations involving immediate self-harm, medical emergencies, or harm to others, you agree to immediately escalate the situation through official CareCircle crisis protocols rather than handling severe clinical crises independently.
+            </Text>
+
+            {/* Terms and Conditions */}
+            <Text style={[styles.policySectionTitle, { color: colors.text, marginTop: 24 }]}>
+              Terms and Conditions
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              Peer Supporters act as compassionate, non-judgmental listeners providing emotional solidarity. Supporters are volunteers and do not act as licensed medical clinicians, psychologists, or psychiatrists, nor should they prescribe medical treatments or offer formal diagnostic advice.
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              You agree to uphold a safe, respectful, empathetic, and inclusive space free from discrimination, harassment, proselytization, or hate speech. Any misconduct or breach of trust will result in immediate revocation of supporter privileges and account suspension.
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              You commit to honoring all scheduled 1-on-1 and group support sessions. If you cannot attend a scheduled session, you agree to cancel or reschedule at least 24 hours in advance to respect participant time and maintain community reliability.
+            </Text>
+            <Text style={[styles.policyParagraph, { color: colors.textSecondary }]}>
+              CareCircle reserves the right to periodically review supporter feedback, manage certification status, and update community safety guidelines to best protect all peer members.
+            </Text>
           </View>
 
-          {/* Expectations Section */}
-          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="calendar-outline" size={22} color={colors.brand} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Expectations</Text>
-            </View>
-            <View style={styles.bullets}>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Commit to hosting at least <Text style={{ fontWeight: '700', color: colors.text }}>2 hours of support sessions</Text> per week.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Absolute client confidentiality and data privacy protection.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • strictly follow CareCircle&apos;s volunteer code of conduct.
-              </Text>
-            </View>
-          </View>
-
-          {/* Benefits Section */}
-          <View style={[styles.learnCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={styles.sectionHeader}>
-              <Ionicons name="gift-outline" size={22} color={colors.brand} />
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Benefits</Text>
-            </View>
-            <View style={styles.bullets}>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Gain practical, real-world peer counseling experience.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Earn certified volunteer hours and letters of recommendation.
-              </Text>
-              <Text style={[styles.bulletPoint, { color: colors.textSecondary }]}>
-                • Access exclusive training workshops and professional mentoring resources.
-              </Text>
-            </View>
-          </View>
-
-          {/* Action Button */}
+          {/* Acknowledgment Checkbox Row */}
           <TouchableOpacity
-            style={[styles.applyButton, { backgroundColor: colors.brand }]}
-            onPress={() => setShowForm(true)}
-            activeOpacity={0.8}
+            style={styles.acknowledgmentRow}
+            onPress={() => setAcknowledged(!acknowledged)}
+            activeOpacity={0.7}
           >
-            <Text style={styles.applyBtnText}>Apply Now</Text>
-            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+            <View
+              style={[
+                styles.checkboxBase,
+                acknowledged
+                  ? { backgroundColor: '#2563EB', borderColor: '#2563EB' }
+                  : { backgroundColor: 'transparent', borderColor: isDark ? '#4B5563' : '#CBD5E1' },
+              ]}
+            >
+              {acknowledged && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+            </View>
+            <Text style={[styles.acknowledgmentCaption, { color: colors.textSecondary }]}>
+              <Text style={{ fontWeight: '700', color: colors.text }}>Acknowledgment: </Text>
+              By applying, you confirm that you have read, understood, and agree to adhere to the Privacy Policy and Volunteer Terms & Conditions.
+            </Text>
+          </TouchableOpacity>
+
+          {/* Centered Pill Action Button */}
+          <TouchableOpacity
+            style={[
+              styles.pillApplyButton,
+              !acknowledged && styles.pillApplyButtonDisabled,
+            ]}
+            onPress={() => {
+              if (acknowledged) {
+                setShowForm(true);
+              }
+            }}
+            disabled={!acknowledged}
+            activeOpacity={0.85}
+          >
+            <Text style={[styles.pillApplyBtnText, !acknowledged && { opacity: 0.8 }]}>Apply Now</Text>
+            <Ionicons
+              name="arrow-forward"
+              size={20}
+              color="#FFFFFF"
+              style={{ opacity: acknowledged ? 1 : 0.8 }}
+            />
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -360,16 +369,17 @@ export default function BecomeSupporterScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <View style={styles.headerRow}>
-            <TouchableOpacity onPress={() => setShowForm(false)} style={styles.backBtn}>
+          <View style={styles.centeredHeaderRow}>
+            <TouchableOpacity onPress={() => setShowForm(false)} style={styles.backBtn} activeOpacity={0.7}>
               <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+            <Text style={[styles.centeredHeaderTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
               Application Form
             </Text>
+            <View style={{ width: 28 }} />
           </View>
           
-          <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
+          <Text style={[styles.subtitle, { color: colors.textSecondary, textAlign: 'center' }]}>
             Please fill in your correct credentials to apply for peer supporter certification.
           </Text>
 
@@ -545,6 +555,12 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     gap: 12,
   },
+  centeredHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
   backBtn: {
     padding: 2,
   },
@@ -553,46 +569,76 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.3,
   },
-  introText: {
-    fontSize: 14,
+  centeredHeaderTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+    textAlign: 'center',
+    flex: 1,
+  },
+  policyContainerCard: {
+    borderRadius: 20,
+    padding: 20,
+    paddingBottom: 24,
+    marginBottom: 18,
+  },
+  policySectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+    letterSpacing: -0.2,
+  },
+  policyParagraph: {
+    fontSize: 13.5,
     lineHeight: 20,
-    marginBottom: 20,
-  },
-  learnCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 16,
-    marginBottom: 16,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
     marginBottom: 10,
   },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
+  acknowledgmentRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+    paddingHorizontal: 4,
+    gap: 12,
   },
-  bullets: {
-    gap: 8,
+  checkboxBase: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
   },
-  bulletPoint: {
+  acknowledgmentCaption: {
+    flex: 1,
     fontSize: 13,
     lineHeight: 18,
   },
-  applyButton: {
+  pillApplyButton: {
+    alignSelf: 'center',
+    backgroundColor: '#2563EB',
+    borderRadius: 28,
+    paddingVertical: 13,
+    paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginTop: 10,
+    gap: 8,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  applyBtnText: {
+  pillApplyButtonDisabled: {
+    backgroundColor: '#94A3B8',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
+  pillApplyBtnText: {
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '600',
   },
   subtitle: {
     fontSize: 14,
