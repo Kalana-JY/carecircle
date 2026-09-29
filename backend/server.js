@@ -22,6 +22,7 @@ const messageRoutes = require("./src/routes/messageRoutes");
 const moodReportRoutes = require("./src/routes/moodReportRoutes");
 const reminderRoutes = require("./src/routes/reminderRoutes");
 const notificationRoutes = require("./src/routes/notificationRoutes");
+const adminRoutes = require("./src/routes/adminRoutes");
 
 
 const app = express();
@@ -49,6 +50,7 @@ const mount = (path, router) => {
 
 // Routes
 mount('/api/auth', authRoutes);
+mount('/api/admin', adminRoutes);
 mount('/api/moods', moodRoutes);
 mount('/api/journals', journalRoutes);
 mount('/api/forum', forumRoutes);

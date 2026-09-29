@@ -200,14 +200,14 @@ export default function BookedSessionsScreen() {
 
     bookings.forEach((b) => {
       const sessionEnd = new Date(b.endTime).getTime();
-      const isPastOrCancelled = sessionEnd < currentTimestamp || b.status === 'cancelled' || b.status === 'completed';
+      const isPastOrEnded = sessionEnd < currentTimestamp || b.status === 'cancelled' || b.status === 'completed';
 
       const sDate = new Date(b.startTime);
       if (sDate.getFullYear() === calYear && sDate.getMonth() === calMonth) {
         dateSet.add(sDate.getDate());
       }
 
-      if (isPastOrCancelled) {
+      if (isPastOrEnded) {
         history.push(b);
       } else {
         upcoming.push(b);
@@ -216,7 +216,7 @@ export default function BookedSessionsScreen() {
 
     return {
       upcomingBookings: upcoming,
-      historyBookings: history.length > 0 ? history : bookings,
+      historyBookings: history,
       bookedDatesSet: dateSet,
     };
   }, [bookings, calYear, calMonth]);
@@ -374,24 +374,30 @@ export default function BookedSessionsScreen() {
             ) : (
               <View style={styles.detailRow}>
                 <Ionicons name="videocam-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
-                <TouchableOpacity
-                  onPress={() => {
-                    const raw = item.meetingLink?.trim();
-                    const url = raw
-                      ? (raw.startsWith('http') ? raw : `https://${raw}`)
-                      : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
-                    Linking.openURL(url).catch(() => {
-                      Alert.alert('Error', 'Unable to open meeting link.');
-                    });
-                  }}
-                  activeOpacity={0.7}
-                  style={styles.meetingLinkBtn}
-                >
-                  <Text style={[styles.detailText, styles.linkText, { color: colors.brand }]}>
-                    Meeting Link
+                {activeTab === 'sessions' ? (
+                  <TouchableOpacity
+                    onPress={() => {
+                      const raw = item.meetingLink?.trim();
+                      const url = raw
+                        ? (raw.startsWith('http') ? raw : `https://${raw}`)
+                        : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
+                      Linking.openURL(url).catch(() => {
+                        Alert.alert('Error', 'Unable to open meeting link.');
+                      });
+                    }}
+                    activeOpacity={0.7}
+                    style={styles.meetingLinkBtn}
+                  >
+                    <Text style={[styles.detailText, styles.linkText, { color: colors.brand }]}>
+                      Meeting Link
+                    </Text>
+                    <Ionicons name="open-outline" size={14} color={colors.brand} style={{ marginLeft: 4 }} />
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={[styles.detailText, { color: colors.textSecondary }]}>
+                    Virtual Session (Completed)
                   </Text>
-                  <Ionicons name="open-outline" size={14} color={colors.brand} style={{ marginLeft: 4 }} />
-                </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -615,15 +621,25 @@ export default function BookedSessionsScreen() {
         )}
       </ScrollView>
 
-      {/* Give Feedback Modal */}
+      {/* Give Feedback Bottom Sheet Modal (slides from bottom to top) */}
       <Modal
         visible={feedbackModalVisible}
         transparent={true}
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setFeedbackModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+        <TouchableOpacity
+          style={styles.sheetOverlay}
+          activeOpacity={1}
+          onPress={() => setFeedbackModalVisible(false)}
+        >
+          <TouchableOpacity
+            style={[styles.bottomSheetModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+            activeOpacity={1}
+          >
+            {/* Handle bar */}
+            <View style={[styles.sheetHandle, { backgroundColor: isDark ? '#475569' : '#CBD5E1' }]} />
+
             <Text style={[styles.modalTitle, { color: colors.text }]}>Rate Your Experience</Text>
             <Text style={[styles.modalSubtitle, { color: colors.textSecondary }]}>
               How was your support session with {selectedSessionForFeedback?.supporterId?.name || 'Peer Supporter'}?
@@ -635,7 +651,7 @@ export default function BookedSessionsScreen() {
                 <TouchableOpacity key={star} onPress={() => setRating(star)} activeOpacity={0.7}>
                   <Ionicons
                     name={star <= rating ? 'star' : 'star-outline'}
-                    size={32}
+                    size={36}
                     color={star <= rating ? '#F59E0B' : colors.textSecondary}
                   />
                 </TouchableOpacity>
@@ -674,8 +690,8 @@ export default function BookedSessionsScreen() {
                 )}
               </TouchableOpacity>
             </View>
-          </View>
-        </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
@@ -952,20 +968,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalOverlay: {
+  sheetOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
   },
-  modalCard: {
+  bottomSheetModalCard: {
     width: '100%',
-    maxWidth: 340,
-    borderRadius: 18,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     borderWidth: 1,
-    padding: 20,
+    borderBottomWidth: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: Platform.OS === 'ios' ? 38 : 24,
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 20,
+  },
+  sheetHandle: {
+    width: 44,
+    height: 5,
+    borderRadius: 3,
+    marginBottom: 16,
   },
   modalTitle: {
     fontSize: 18,

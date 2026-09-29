@@ -35,6 +35,8 @@ import CreateGroupScreen from '../screens/messaging/CreateGroupScreen';
 import UserListScreen from '../screens/messaging/UserListScreen';
 
 import AdminDashboard from '../screens/admin/AdminDashboard';
+import UserManagementScreen from '../screens/admin/UserManagementScreen';
+import SessionManagementScreen from '../screens/admin/SessionManagementScreen';
 
 import { CustomTabBar } from '../components/CustomTabBar';
 import type { HubTab } from '../components/MoodHubChrome';
@@ -74,6 +76,8 @@ export type MainStackParamList = {
   Goals: { refreshKey?: number } | undefined;
   Reports: undefined;
   AdminDashboard: undefined;
+  UserManagement: undefined;
+  SessionManagement: undefined;
   Modal: undefined;
 };
 
@@ -281,6 +285,18 @@ export default function MainNavigator() {
       <Stack.Screen
         name="AdminDashboard"
         component={AdminDashboard}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="UserManagement"
+        component={UserManagementScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="SessionManagement"
+        component={SessionManagementScreen}
         options={{ headerShown: false }}
       />
 

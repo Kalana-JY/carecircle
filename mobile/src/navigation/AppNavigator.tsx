@@ -5,6 +5,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import AuthNavigator from './AuthNavigator';
 import MainNavigator from './MainNavigator';
+import AdminNavigator from './AdminNavigator';
 
 
 const CareTheme = {
@@ -36,6 +37,9 @@ export function AppNavigator() {
       return <AuthNavigator />;
     }
 
+    if (user.isAdmin || user.email?.toLowerCase().includes('admin')) {
+      return <AdminNavigator />;
+    }
 
     return <MainNavigator />;
   };

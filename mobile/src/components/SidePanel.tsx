@@ -267,28 +267,70 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               </Text>
             </TouchableOpacity>
 
-            {/* Admin Dashboard */}
+            {/* Admin Management Links */}
             {user?.isAdmin ||
             user?.email?.toLowerCase().includes('admin') ? (
-              <TouchableOpacity
-                style={styles.menuItem}
-                activeOpacity={0.7}
-                onPress={() => handleNavigation('AdminDashboard')}
-              >
-                <Ionicons
-                  name="settings-outline"
-                  size={20}
-                  color={colors.primary || colors.tint}
-                />
-                <Text
-                  style={[
-                    styles.menuItemText,
-                    { color: colors.text },
-                  ]}
+              <>
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleNavigation('AdminDashboard')}
                 >
-                  Admin Dashboard
-                </Text>
-              </TouchableOpacity>
+                  <Ionicons
+                    name="grid-outline"
+                    size={20}
+                    color={colors.primary || colors.tint}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Admin Dashboard
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleNavigation('UserManagement')}
+                >
+                  <Ionicons
+                    name="people-outline"
+                    size={20}
+                    color={colors.primary || colors.tint}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    User Management
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.menuItem}
+                  activeOpacity={0.7}
+                  onPress={() => handleNavigation('SessionManagement')}
+                >
+                  <Ionicons
+                    name="calendar-outline"
+                    size={20}
+                    color={colors.primary || colors.tint}
+                  />
+                  <Text
+                    style={[
+                      styles.menuItemText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Session Management
+                  </Text>
+                </TouchableOpacity>
+              </>
             ) : null}
           </ScrollView>
 
