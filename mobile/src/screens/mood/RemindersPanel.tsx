@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
+  notificationApi,
   reminderApi,
   type ReminderFrequency,
   type ReminderNotification,
@@ -132,14 +133,21 @@ export function RemindersPanel() {
     const run = async () => {
       try {
         // Reading notifications also delivers any occurrences that came due.
-        const [reminderList, inbox] = await Promise.all([
+        const [reminderList, reminderInbox, wellbeingInbox] = await Promise.all([
           reminderApi.list(),
           reminderApi.notifications(),
+          notificationApi.list(),
         ]);
         if (!active) return;
+        const received = (wellbeingInbox.data || []).filter((item) =>
+          item.type === 'daily_wellbeing_tip' || item.type === 'motivational_message'
+        );
+        const items = [...reminderInbox.items, ...received].sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
         setReminders(reminderList.items);
-        setNotifications(inbox.items);
-        setUnreadCount(inbox.meta.unreadCount);
+        setNotifications(items);
+        setUnreadCount(items.filter((item) => !item.read).length);
         setError(null);
       } catch (loadError: any) {
         if (active) setError(loadError.message || 'Unable to load your reminders.');
