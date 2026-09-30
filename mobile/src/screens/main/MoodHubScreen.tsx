@@ -27,6 +27,7 @@ import { MoodPatternsPanel } from '../mood/MoodPatternsPanel';
 import { MoodComparePanel } from '../mood/MoodComparePanel';
 import { MoodReportPanel } from '../mood/MoodReportPanel';
 import { RemindersPanel } from '../mood/RemindersPanel';
+import { WellbeingPanel } from '../mood/WellbeingPanel';
 
 const weekStartStamp = () => {
   const date = new Date();
@@ -34,9 +35,10 @@ const weekStartStamp = () => {
   return stampFromDate(date);
 };
 
-type InsightTab = 'history' | 'trends' | 'patterns' | 'compare' | 'report';
+type InsightTab = 'foryou' | 'history' | 'trends' | 'patterns' | 'compare' | 'report';
 
 const INSIGHT_TABS: { key: InsightTab; label: string }[] = [
+  { key: 'foryou', label: 'For you' },
   { key: 'history', label: 'History' },
   { key: 'trends', label: 'Trends' },
   { key: 'patterns', label: 'Patterns' },
@@ -67,7 +69,7 @@ export default function MoodHubScreen() {
   const [activityTarget, setActivityTarget] = useState('7');
   const [activityDuration, setActivityDuration] = useState('10');
 
-  const [insightTab, setInsightTab] = useState<InsightTab>('history');
+  const [insightTab, setInsightTab] = useState<InsightTab>('foryou');
   const [showCalendar, setShowCalendar] = useState(false);
   const [editingEntry, setEditingEntry] = useState<{ id: string; source: 'journal' | 'mood'; mood: string; text: string; date: string } | null>(null);
   const [showComposer, setShowComposer] = useState(false);
@@ -98,6 +100,10 @@ export default function MoodHubScreen() {
     if (route.params?.selectedMood) setSelectedMood(route.params.selectedMood);
     if (route.params?.hubTab) setHubTab(route.params.hubTab);
   }, [route.params?.hubTab, route.params?.selectedMood]);
+
+  useEffect(() => {
+    if (hubTab === 'journal') loadAll();
+  }, [hubTab, loadAll]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -434,10 +440,14 @@ export default function MoodHubScreen() {
                 <Text style={styles.empty}>Create an activity to start building your routine.</Text>
               </View>
             ) : null}
+            {activities.length > 0 ? (
+              <Text style={styles.helper}>Tick today only after you have done it. Progress moves when you tick, not when you add the activity.</Text>
+            ) : null}
             {activities.map((activity) => {
               const completed = progressFor(activity);
               const percent = Math.round((completed / Math.max(activity.targetPerWeek, 1)) * 100);
               const meta = categoryStyle(activity.category);
+              const done = loggedToday(activity);
               return (
                 <View key={activity._id} style={styles.activityCard}>
                   <View style={styles.activityTop}>
@@ -446,17 +456,29 @@ export default function MoodHubScreen() {
                     </View>
                     <View style={styles.activityCopy}>
                       <Text style={styles.activityTitle}>{activity.title}</Text>
-                      <Text style={styles.activityCategory}>{activity.category.toUpperCase()}</Text>
+                      <Text style={styles.activityCategory}>{activity.category.toUpperCase()} · {activity.duration} min</Text>
                     </View>
                     <Text style={styles.percent}>{percent}%</Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={() => (done ? unlogActivity(activity) : logActivity(activity))}
+                    style={[styles.tickRow, done && styles.tickRowDone]}
+                    accessibilityLabel={done ? `Undo today's log for ${activity.title}` : `Mark ${activity.title} complete for today`}
+                    activeOpacity={0.85}
+                  >
+                    <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={24} color={done ? '#2F7D4A' : '#8AA0B2'} />
+                    <View style={styles.activityCopy}>
+                      <Text style={[styles.tickTitle, done && styles.tickTitleDone]}>{done ? 'Completed today' : 'Mark today complete'}</Text>
+                      <Text style={styles.tickHint}>{done ? 'Nice work. Tap again if you marked it by mistake.' : 'This is the only way today counts toward your week.'}</Text>
+                    </View>
+                  </TouchableOpacity>
                   <View style={styles.progressTrack}>
-                    <View style={[styles.progressFill, { width: `${Math.min(100, percent)}%`, backgroundColor: meta.tint }]} />
+                    <View style={[styles.progressFill, { width: `${Math.min(100, percent)}%`, backgroundColor: done ? '#2F7D4A' : meta.tint }]} />
                   </View>
                   <View style={styles.rowBetween}>
-                    <Text style={styles.muted}>Weekly Progress</Text>
+                    <Text style={styles.muted}>This week</Text>
                     <Text style={styles.muted}>
-                      {completed} / {activity.targetPerWeek} this week
+                      {completed} / {activity.targetPerWeek} days
                     </Text>
                   </View>
                   <View style={styles.activityActions}>
@@ -472,45 +494,6 @@ export default function MoodHubScreen() {
                 </View>
               );
             })}
-
-            <View style={[styles.rowBetween, { marginTop: 18 }]}>
-              <Text style={styles.sectionTitle}>Today&apos;s activities</Text>
-              <TouchableOpacity
-                onPress={() => {
-                  const next = activities.find((activity) => !loggedToday(activity));
-                  if (next) logActivity(next);
-                  else setShowActivityForm(true);
-                }}
-              >
-                <Text style={styles.link}>+ LOG ACTIVITY</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={styles.card}>
-              {activities.map((activity) => {
-                const done = loggedToday(activity);
-                return (
-                  <View key={activity._id} style={styles.todayRow}>
-                    <TouchableOpacity
-                      onPress={() => (done ? unlogActivity(activity) : logActivity(activity))}
-                      style={styles.todayMain}
-                      activeOpacity={0.8}
-                    >
-                      <Ionicons name={done ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={done ? BRAND : '#C5CAD1'} />
-                      <Text style={[styles.todayLabel, done && styles.todayDone]}>
-                        {activity.title} {activity.duration} min
-                      </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => startEditActivity(activity)} hitSlop={8} accessibilityLabel={`Edit ${activity.title}`}>
-                      <Ionicons name="create-outline" size={18} color={BRAND} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => deleteActivity(activity)} hitSlop={8} accessibilityLabel={`Delete ${activity.title}`}>
-                      <Ionicons name="trash-outline" size={18} color="#C4453C" />
-                    </TouchableOpacity>
-                  </View>
-                );
-              })}
-              {activities.length === 0 ? <Text style={styles.empty}>Log an activity after you create one.</Text> : null}
-            </View>
           </View>
         )}
 
@@ -551,6 +534,7 @@ export default function MoodHubScreen() {
               })}
             </ScrollView>
 
+            {insightTab === 'foryou' && <WellbeingPanel onActivityAdded={loadAll} />}
             {insightTab === 'history' && <MoodHistoryPanel />}
             {insightTab === 'trends' && <MoodTrendsPanel />}
             {insightTab === 'patterns' && <MoodPatternsPanel />}
@@ -724,6 +708,20 @@ const styles = StyleSheet.create({
   activityTitle: { fontSize: 15, fontWeight: '800', color: '#1C242C' },
   activityCategory: { fontSize: 10, fontWeight: '800', color: '#8B949E', marginTop: 2 },
   percent: { fontSize: 16, fontWeight: '800', color: '#1C242C' },
+  helper: { color: '#5E6770', fontSize: 13, lineHeight: 18, marginBottom: 12 },
+  tickRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#F4F8FB',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+  },
+  tickRowDone: { backgroundColor: '#E8F6EC' },
+  tickTitle: { color: '#1C242C', fontSize: 14, fontWeight: '800' },
+  tickTitleDone: { color: '#2F7D4A' },
+  tickHint: { color: '#6B7580', fontSize: 12, marginTop: 2, lineHeight: 16 },
   activityActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 16, marginTop: 12 },
   action: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   actionText: { color: BRAND, fontWeight: '700' },
