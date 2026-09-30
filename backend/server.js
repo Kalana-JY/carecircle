@@ -23,6 +23,9 @@ const moodReportRoutes = require("./src/routes/moodReportRoutes");
 const reminderRoutes = require("./src/routes/reminderRoutes");
 const notificationRoutes = require("./src/routes/notificationRoutes");
 const adminRoutes = require("./src/routes/adminRoutes");
+const wellbeingRoutes = require("./src/routes/wellbeingRoutes");
+const { syncAllDueReminders } = require("./src/services/reminderService");
+const { deliverDailyWellbeing } = require("./src/services/wellbeingRecommendations");
 
 
 const app = express();
@@ -63,6 +66,7 @@ mount('/api/conversations', messageRoutes);
 mount('/api/mood-reports', moodReportRoutes);
 mount('/api/reminders', reminderRoutes);
 mount('/api/notifications', notificationRoutes);
+mount('/api/wellbeing', wellbeingRoutes);
 
 app.get("/api/ping-crisis", (req, res) => {
   res.json({ ok: true, route: "crisis-ping" });
@@ -313,6 +317,23 @@ io.on('connection', async (socket) => {
   });
 });
 
+const deliverDailyContent = async () => {
+  const userIds = await User.distinct('_id');
+  for (const userId of userIds) {
+    await deliverDailyWellbeing(userId);
+  }
+};
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`CareCircle API listening on http://localhost:${PORT}`);
+  const deliverDue = async () => {
+    try {
+      await syncAllDueReminders();
+      await deliverDailyContent();
+    } catch (error) {
+      console.error('Wellbeing delivery error:', error);
+    }
+  };
+  deliverDue();
+  setInterval(deliverDue, 30 * 1000);
 });
