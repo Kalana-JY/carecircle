@@ -1171,3 +1171,104 @@ export const reminderApi = {
       }`
     ),
 };
+
+export const notificationApi = {
+  list: (unreadOnly = false) =>
+    apiFetch<{
+      success: boolean;
+      data: ReminderNotification[];
+      unreadCount: number;
+    }>(`/api/notifications${unreadOnly ? '?unread=true' : ''}`),
+
+  markRead: (id: string) =>
+    apiFetch<{ success: boolean; message: string }>(`/api/notifications/${id}/read`, {
+      method: 'PATCH',
+    }),
+};
+
+/* ── Personalized wellbeing recommendations ───────────────────────── */
+
+export type WellbeingTone =
+  | 'starting'
+  | 'low'
+  | 'declining'
+  | 'steady'
+  | 'improving'
+  | 'positive';
+
+export interface WellbeingProfile {
+  window: { start: string; end: string; days: number };
+  tone: WellbeingTone;
+  context: string;
+  summary: {
+    entryCount: number;
+    averageScore: number;
+    dominantMood: string | null;
+    volatility: number;
+    positiveRate: number;
+    negativeRate: number;
+  };
+  trend: { direction: string; change: number };
+}
+
+export interface WellbeingRecommendation {
+  id: string;
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  title: string;
+  body: string;
+  reason: string;
+}
+
+export interface DailyWellbeingTip {
+  id: string;
+  category: string;
+  title: string;
+  body: string;
+}
+
+export interface MotivationalMessage {
+  id: string;
+  title: string;
+  body: string;
+}
+
+export interface RecommendedActivity {
+  key: string;
+  title: string;
+  category: string;
+  durationMinutes: number | null;
+  description: string;
+  reason: string;
+  source: 'mood_history' | 'catalog';
+  alreadyPracticing: boolean;
+}
+
+export const wellbeingApi = {
+  recommendations: (days = 30) =>
+    apiFetch<WellbeingProfile & { items: WellbeingRecommendation[]; meta: { total: number } }>(
+      `/api/wellbeing/recommendations?days=${days}`
+    ),
+
+  tip: () =>
+    apiFetch<{
+      date: string;
+      tip: DailyWellbeingTip;
+      context: string;
+      notificationId: string | null;
+    }>('/api/wellbeing/tips'),
+
+  motivation: () =>
+    apiFetch<{
+      date: string;
+      tone: WellbeingTone;
+      context: string;
+      message: MotivationalMessage;
+      notificationId: string | null;
+    }>('/api/wellbeing/motivation'),
+
+  activities: (days = 30) =>
+    apiFetch<WellbeingProfile & { items: RecommendedActivity[]; meta: { total: number } }>(
+      `/api/wellbeing/activities?days=${days}`
+    ),
+};

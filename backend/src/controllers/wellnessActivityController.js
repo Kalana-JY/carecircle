@@ -31,7 +31,7 @@ const createActivity = async (req, res) => {
       duration,
       notes,
       targetPerWeek,
-      logs: [{ date: new Date(`${date}T00:00:00.000Z`), minutes: duration }],
+      logs: [],
     });
     return res.status(201).json(activity);
   } catch (error) { return handleError(res, error); }

@@ -7,7 +7,9 @@ const connectDB = async () => {
 
     if (!mongoUri) {
       console.log('No MONGO_URI found — starting in-memory MongoDB for local dev');
-      const mongod = await MongoMemoryServer.create();
+      const mongod = await MongoMemoryServer.create({
+        instance: { launchTimeout: 120000 },
+      });
       mongoUri = mongod.getUri();
       // keep reference so the process doesn't exit and mongod stays alive
       connectDB._mongod = mongod;
