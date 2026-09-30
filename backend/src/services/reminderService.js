@@ -112,6 +112,22 @@ const syncReminderNotifications = async (userId, now = new Date()) => {
   return delivered.filter(Boolean);
 };
 
+// Creates inbox notifications for every reminder that is due, even if that user
+// does not currently have the app open.
+const syncAllDueReminders = async (now = new Date()) => {
+  const dueUsers = await Reminder.distinct('userId', {
+    status: 'active',
+    nextSendAt: { $ne: null, $lte: now },
+  });
+
+  const delivered = [];
+  for (const userId of dueUsers) {
+    const created = await syncReminderNotifications(userId, now);
+    delivered.push(...created);
+  }
+  return delivered;
+};
+
 const isValidTimeOfDay = (value) => typeof value === 'string' && TIME_OF_DAY_PATTERN.test(value);
 
 const isValidDateKey = (value) => {
@@ -130,5 +146,6 @@ module.exports = {
   notificationContentFor,
   createReminderNotification,
   syncReminderNotifications,
+  syncAllDueReminders,
   isValidTimeOfDay,
 };
