@@ -39,6 +39,7 @@ import UserManagementScreen from '../screens/admin/UserManagementScreen';
 import SessionManagementScreen from '../screens/admin/SessionManagementScreen';
 
 import { CustomTabBar } from '../components/CustomTabBar';
+import { NotificationDialog } from '../components/NotificationDialog';
 import type { HubTab } from '../components/MoodHubChrome';
 
 export type MainTabParamList = {
@@ -89,6 +90,7 @@ const Stack = createNativeStackNavigator<MainStackParamList>();
 
 function MainTabs() {
   return (
+    <>
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
@@ -123,6 +125,8 @@ function MainTabs() {
         options={{ title: 'Account' }}
       />
     </Tab.Navigator>
+    <NotificationDialog />
+    </>
   );
 }
 
