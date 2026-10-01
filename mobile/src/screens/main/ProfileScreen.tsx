@@ -215,21 +215,15 @@ export default function ProfileScreen() {
             </>
           )}
 
-            {/* Notification */}
+            {/* Reminder */}
             <TouchableOpacity
               style={styles.menuRow}
-              onPress={() =>
-                setAlertConfig({
-                  title: 'Notifications',
-                  message: 'No new notifications right now.',
-                  type: 'info',
-                })
-              }
+              onPress={() => navigation.navigate('Reminder')}
               activeOpacity={0.7}
             >
               <View style={styles.menuLeft}>
-                <Ionicons name="notifications-outline" size={20} color={colors.text} />
-                <Text style={[styles.menuTitle, { color: colors.text }]}>Notification</Text>
+                <Ionicons name="alarm-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Reminder</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
             </TouchableOpacity>
