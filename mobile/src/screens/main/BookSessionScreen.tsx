@@ -21,6 +21,7 @@ import { useAuth } from '@/store/AuthContext';
 import { apiFetch } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 const CATEGORY_FILTERS = ['All', 'Popular', 'Stress Management', 'Anxiety', 'Depression', 'General Check-in'];
 
@@ -45,6 +46,27 @@ export default function BookSessionScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
+  const [sessionToBook, setSessionToBook] = useState<any | null>(null);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+    onConfirm?: () => void;
+  } | null>(null);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
+    onConfirm?: () => void
+  ) => {
+    setAlertConfig({
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
 
   // Search & Filter States
   const [searchText, setSearchText] = useState<string>('');
@@ -58,7 +80,7 @@ export default function BookSessionScreen() {
       setSessions(data.items || []);
     } catch (err: any) {
       console.error('[BookSession] Fetch error:', err);
-      Alert.alert('Error', err.message || 'Failed to load available sessions.');
+      showAlert('Error', err.message || 'Failed to load available sessions.', 'error');
     } finally {
       setLoading(false);
     }
@@ -88,51 +110,34 @@ export default function BookSessionScreen() {
     });
   };
 
-  const handleBookSession = async (session: any) => {
+  const handleBookSession = (session: any) => {
     if (session.supporterId?._id === user?._id) {
-      Alert.alert('Cannot Book', 'You cannot book a support session that you host.');
+      showAlert('Cannot Book', 'You cannot book a support session that you host.', 'warning');
       return;
     }
+    setSessionToBook(session);
+  };
 
-    const performBooking = async () => {
-      setBookingId(session._id);
-      try {
-        await apiFetch(`/api/sessions/${session._id}/book`, {
-          method: 'POST',
-        });
-        if (Platform.OS === 'web') {
-          window.alert(`Successfully booked! Session link and details are available in your Profile tab.`);
-        } else {
-          Alert.alert(
-            'Success',
-            'Successfully booked! Session details are available in your Account tab.',
-            [{ text: 'OK', onPress: () => navigation.goBack() }]
-          );
-        }
-        if (Platform.OS === 'web') {
-          navigation.goBack();
-        }
-      } catch (err: any) {
-        console.error('[BookSession] Booking error:', err);
-        Alert.alert('Error', err.message || 'Failed to book session.');
-      } finally {
-        setBookingId(null);
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Book session "${session.title}" hosted by ${session.supporterId?.name || 'Peer Supporter'}?`)) {
-        performBooking();
-      }
-    } else {
-      Alert.alert(
-        'Confirm Booking',
-        `Would you like to book "${session.title}" with ${session.supporterId?.name || 'Peer Supporter'}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Confirm', onPress: performBooking },
-        ]
+  const performBooking = async () => {
+    if (!sessionToBook) return;
+    const session = sessionToBook;
+    setBookingId(session._id);
+    try {
+      await apiFetch(`/api/sessions/${session._id}/book`, {
+        method: 'POST',
+      });
+      setSessionToBook(null);
+      showAlert(
+        'Success',
+        'Successfully booked! Session details are available in your Account tab.',
+        'success',
+        () => navigation.goBack()
       );
+    } catch (err: any) {
+      console.error('[BookSession] Booking error:', err);
+      showAlert('Error', err.message || 'Failed to book session.', 'error');
+    } finally {
+      setBookingId(null);
     }
   };
 
@@ -309,7 +314,7 @@ export default function BookSessionScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('Notifications', 'No new session notifications.')}
+          onPress={() => showAlert('Notifications', 'No new session notifications.', 'info')}
           hitSlop={12}
           accessibilityLabel="Notifications"
         >
@@ -397,6 +402,33 @@ export default function BookSessionScreen() {
           }
         />
       )}
+
+      {/* Booking Confirmation Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!sessionToBook}
+        title="Confirm Booking"
+        message={`Would you like to book "${sessionToBook?.title}" with ${sessionToBook?.supporterId?.name || 'Peer Supporter'}?`}
+        confirmText="Yes, Book Session"
+        cancelText="Cancel"
+        onConfirm={performBooking}
+        onCancel={() => setSessionToBook(null)}
+        loading={!!bookingId}
+      />
+
+      {/* Status Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!alertConfig}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        confirmText="OK"
+        singleButton={true}
+        onConfirm={() => {
+          const cb = alertConfig?.onConfirm;
+          setAlertConfig(null);
+          if (cb) cb();
+        }}
+      />
     </SafeAreaView>
   );
 }

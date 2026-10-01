@@ -22,6 +22,7 @@ import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -54,6 +55,28 @@ export default function BookedSessionsScreen() {
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [sessionToCancel, setSessionToCancel] = useState<string | null>(null);
+  const [cancellingLoading, setCancellingLoading] = useState<boolean>(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+    onConfirm?: () => void;
+  } | null>(null);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
+    onConfirm?: () => void
+  ) => {
+    setAlertConfig({
+      title,
+      message,
+      type,
+      onConfirm,
+    });
+  };
 
   // Calendar State
   const now = new Date();
@@ -111,57 +134,33 @@ export default function BookedSessionsScreen() {
     });
   };
 
-  const handleCancelBooking = async (sessionId: string) => {
-    const cancelAction = async () => {
-      try {
-        const response = await fetch(`${API_URL}/api/sessions/${sessionId}/cancel`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-          },
-        });
-        const data = await response.json();
-        if (response.ok) {
-          if (Platform.OS === 'web') {
-            window.alert('Booking cancelled successfully.');
-          } else {
-            Alert.alert('Success', 'Booking cancelled successfully.');
-          }
-          fetchBookings();
-        } else {
-          if (Platform.OS === 'web') {
-            window.alert(data.message || 'Failed to cancel booking.');
-          } else {
-            Alert.alert('Error', data.message || 'Failed to cancel booking.');
-          }
-        }
-      } catch (err) {
-        console.error('[BookedSessions] Cancel error:', err);
-        if (Platform.OS === 'web') {
-          window.alert('Server error. Please try again later.');
-        } else {
-          Alert.alert('Error', 'Server error. Please try again later.');
-        }
-      }
-    };
+  const handleCancelBooking = (sessionId: string) => {
+    setSessionToCancel(sessionId);
+  };
 
-    if (Platform.OS === 'web') {
-      if (window.confirm('Are you sure you want to cancel this support session booking?')) {
-        cancelAction();
+  const performCancelBooking = async () => {
+    if (!sessionToCancel) return;
+    setCancellingLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/api/sessions/${sessionToCancel}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user?.token}`,
+        },
+      });
+      const data = await response.json();
+      setSessionToCancel(null);
+      if (response.ok) {
+        showAlert('Success', 'Booking cancelled successfully.', 'success');
+        fetchBookings();
+      } else {
+        showAlert('Error', data.message || 'Failed to cancel booking.', 'error');
       }
-    } else {
-      Alert.alert(
-        'Cancel Booking',
-        'Are you sure you want to cancel this support session booking?',
-        [
-          { text: 'No', style: 'cancel' },
-          {
-            text: 'Yes, Cancel',
-            style: 'destructive',
-            onPress: cancelAction,
-          },
-        ]
-      );
+    } catch (err) {
+      console.error('[BookedSessions] Cancel error:', err);
+      showAlert('Error', 'Server error. Please try again later.', 'error');
+    } finally {
+      setCancellingLoading(false);
     }
   };
 
@@ -179,13 +178,9 @@ export default function BookedSessionsScreen() {
       // Feedback API submission simulation/endpoint
       await new Promise((r) => setTimeout(r, 600));
       setFeedbackModalVisible(false);
-      if (Platform.OS === 'web') {
-        window.alert('Thank you! Your feedback has been submitted.');
-      } else {
-        Alert.alert('Thank you!', 'Your feedback has been submitted successfully.');
-      }
+      showAlert('Thank you!', 'Your feedback has been submitted successfully.', 'success');
     } catch {
-      Alert.alert('Error', 'Failed to submit feedback. Please try again.');
+      showAlert('Error', 'Failed to submit feedback. Please try again.', 'error');
     } finally {
       setSubmittingFeedback(false);
     }
@@ -382,7 +377,7 @@ export default function BookedSessionsScreen() {
                         ? (raw.startsWith('http') ? raw : `https://${raw}`)
                         : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
                       Linking.openURL(url).catch(() => {
-                        Alert.alert('Error', 'Unable to open meeting link.');
+                        showAlert('Error', 'Unable to open meeting link.', 'error');
                       });
                     }}
                     activeOpacity={0.7}
@@ -453,7 +448,7 @@ export default function BookedSessionsScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('Notifications', 'No new session notifications.')}
+          onPress={() => showAlert('Notifications', 'No new session notifications.', 'info')}
           hitSlop={12}
           accessibilityLabel="Notifications"
         >
@@ -693,6 +688,34 @@ export default function BookedSessionsScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Cancel Booking Confirmation Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!sessionToCancel}
+        title="Cancel Booking"
+        message="Sure you want to cancel this support session booking?"
+        confirmText="Yes, Cancel"
+        cancelText="Keep Booking"
+        isDestructive={true}
+        onConfirm={performCancelBooking}
+        onCancel={() => setSessionToCancel(null)}
+        loading={cancellingLoading}
+      />
+
+      {/* Status Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!alertConfig}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type}
+        confirmText="OK"
+        singleButton={true}
+        onConfirm={() => {
+          const cb = alertConfig?.onConfirm;
+          setAlertConfig(null);
+          if (cb) cb();
+        }}
+      />
     </SafeAreaView>
   );
 }

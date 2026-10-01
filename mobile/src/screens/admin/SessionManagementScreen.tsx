@@ -21,6 +21,7 @@ import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 interface SessionItem {
   _id: string;
@@ -70,6 +71,39 @@ export default function SessionManagementScreen() {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
+  // Confirmation Bottom Sheet
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string | null;
+    type?: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    icon?: keyof typeof Ionicons.glyphMap;
+    singleButton?: boolean;
+    isDestructive?: boolean;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState<boolean>(false);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
+    onConfirm?: () => void
+  ) => {
+    setConfirmDialog({
+      title,
+      message,
+      type,
+      singleButton: true,
+      confirmText: 'OK',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
+
   const fetchSessions = useCallback(async () => {
     if (!user?.token) return;
     try {
@@ -85,6 +119,7 @@ export default function SessionManagementScreen() {
       }
     } catch (err) {
       console.error('[SessionManagement] Fetch Error:', err);
+      showAlert('Error', 'Failed to load sessions.', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -113,48 +148,37 @@ export default function SessionManagementScreen() {
   };
 
   const handleTerminateSession = (sessionId: string, sessionTitle: string) => {
-    const doTerminate = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${user?.token}`,
-          },
-        });
-        if (res.ok) {
-          if (Platform.OS === 'web') {
-            window.alert('Session terminated and removed successfully.');
+    setConfirmDialog({
+      title: 'Terminate Session',
+      message: `Sure you want to terminate and delete session "${sessionTitle}"?`,
+      type: 'error',
+      confirmText: 'Yes, Terminate',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          const res = await fetch(`${API_URL}/api/sessions/${sessionId}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${user?.token}`,
+            },
+          });
+          setConfirmDialog(null);
+          if (res.ok) {
+            showAlert('Success', 'Session terminated and removed successfully.', 'success');
+            fetchSessions();
           } else {
-            Alert.alert('Success', 'Session terminated and removed successfully.');
+            const data = await res.json();
+            showAlert('Error', data.message || 'Failed to terminate session.', 'error');
           }
-          fetchSessions();
-        } else {
-          const data = await res.json();
-          Alert.alert('Error', data.message || 'Failed to terminate session.');
+        } catch {
+          showAlert('Error', 'Server error while terminating session.', 'error');
+        } finally {
+          setConfirmLoading(false);
         }
-      } catch {
-        Alert.alert('Error', 'Server error while terminating session.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Are you sure you want to terminate session "${sessionTitle}"? This cannot be undone.`)) {
-        doTerminate();
-      }
-    } else {
-      Alert.alert(
-        'Terminate Session',
-        `Are you sure you want to terminate and delete session "${sessionTitle}"?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Terminate',
-            style: 'destructive',
-            onPress: doTerminate,
-          },
-        ]
-      );
-    }
+      },
+    });
   };
 
   const filteredSessions = useMemo(() => {
@@ -199,7 +223,7 @@ export default function SessionManagementScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('Notifications', 'No new session alerts.')}
+          onPress={() => showAlert('Notifications', 'No new session alerts.', 'info')}
           hitSlop={10}
           accessibilityLabel="Notifications"
         >
@@ -361,7 +385,7 @@ export default function SessionManagementScreen() {
                                 ? (raw.startsWith('http') ? raw : `https://${raw}`)
                                 : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
                               Linking.openURL(url).catch(() => {
-                                Alert.alert('Error', 'Unable to open meeting link.');
+                                showAlert('Error', 'Unable to open meeting link.', 'error');
                               });
                             }}
                             activeOpacity={0.7}
@@ -393,6 +417,22 @@ export default function SessionManagementScreen() {
           </View>
         )}
       </ScrollView>
+
+      {/* Confirmation & Status Alert Bottom Sheet Modal */}
+      <ConfirmationBottomSheet
+        visible={!!confirmDialog}
+        title={confirmDialog?.title || ''}
+        message={confirmDialog?.message || ''}
+        type={confirmDialog?.type}
+        icon={confirmDialog?.icon}
+        confirmText={confirmDialog?.confirmText || 'OK'}
+        cancelText={confirmDialog?.cancelText}
+        singleButton={confirmDialog?.singleButton}
+        isDestructive={confirmDialog?.isDestructive}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={confirmDialog?.cancelText !== null && !confirmDialog?.singleButton ? () => setConfirmDialog(null) : undefined}
+        loading={confirmLoading}
+      />
     </SafeAreaView>
   );
 }

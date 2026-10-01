@@ -22,6 +22,8 @@ import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
+
 interface UserItem {
   _id: string;
   name: string;
@@ -90,6 +92,41 @@ export default function UserManagementScreen() {
   const [selectedUserForView, setSelectedUserForView] = useState<UserItem | null>(null);
   const [viewingImageUri, setViewingImageUri] = useState<string | null>(null);
 
+  // Confirmation Bottom Sheet
+  const [confirmAction, setConfirmAction] = useState<{
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string | null;
+    type?: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    icon?: keyof typeof Ionicons.glyphMap;
+    singleButton?: boolean;
+    isDestructive?: boolean;
+    titleColor?: string;
+    confirmColor?: string;
+    onConfirm: () => Promise<void> | void;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState<boolean>(false);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
+    onConfirm?: () => void
+  ) => {
+    setConfirmAction({
+      title,
+      message,
+      type,
+      singleButton: true,
+      confirmText: 'OK',
+      onConfirm: () => {
+        setConfirmAction(null);
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
+
   const fetchData = useCallback(async () => {
     if (!user?.token) return;
     try {
@@ -142,90 +179,77 @@ export default function UserManagementScreen() {
   };
 
   const handleDeleteUser = (userId: string, userName: string) => {
-    const doDelete = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${user?.token}` },
-        });
-        if (res.ok) {
-          if (Platform.OS === 'web') {
-            window.alert('User deleted successfully.');
+    setConfirmAction({
+      title: 'Delete User',
+      message: `Sure you want to delete user "${userName}"? This cannot be undone.`,
+      type: 'error',
+      confirmText: 'Yes, Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          const res = await fetch(`${API_URL}/api/admin/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${user?.token}` },
+          });
+          setConfirmAction(null);
+          if (res.ok) {
+            showAlert('Success', 'User deleted successfully.', 'success');
+            fetchData();
           } else {
-            Alert.alert('Success', 'User deleted successfully.');
+            const errData = await res.json();
+            showAlert('Error', errData.message || 'Failed to delete user.', 'error');
           }
-          fetchData();
-        } else {
-          const errData = await res.json();
-          Alert.alert('Error', errData.message || 'Failed to delete user.');
+        } catch {
+          showAlert('Error', 'Server error while deleting user.', 'error');
+        } finally {
+          setConfirmLoading(false);
         }
-      } catch {
-        Alert.alert('Error', 'Server error while deleting user.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Are you sure you want to delete user "${userName}"? This cannot be undone.`)) {
-        doDelete();
-      }
-    } else {
-      Alert.alert(
-        'Delete User',
-        `Are you sure you want to delete user "${userName}"? This will remove all associated user data.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Delete', style: 'destructive', onPress: doDelete },
-        ]
-      );
-    }
+      },
+    });
   };
 
   const handleUpdateAppStatus = async (appId: string, status: 'approved' | 'rejected') => {
-    const actionLabel = status === 'approved' ? 'Approve' : 'Reject';
-    const doUpdate = async () => {
-      try {
-        const res = await fetch(`${API_URL}/api/peer-supporters/applications/${appId}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user?.token}`,
-          },
-          body: JSON.stringify({ status }),
-        });
-        if (res.ok) {
-          if (Platform.OS === 'web') {
-            window.alert(`Application ${status} successfully.`);
+    const isApproved = status === 'approved';
+    const actionLabel = isApproved ? 'Approve' : 'Reject';
+    setConfirmAction({
+      title: `${actionLabel} Application`,
+      message: isApproved
+        ? 'Sure you want to approve this peer supporter application?'
+        : 'Sure you want to reject this peer supporter application?',
+      type: isApproved ? 'success' : 'error',
+      confirmText: `Yes, ${actionLabel}`,
+      cancelText: 'Cancel',
+      isDestructive: !isApproved,
+      titleColor: isApproved ? '#0AC600' : '#EF4444',
+      confirmColor: isApproved ? '#0AC600' : '#EF4444',
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          const res = await fetch(`${API_URL}/api/peer-supporters/applications/${appId}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${user?.token}`,
+            },
+            body: JSON.stringify({ status }),
+          });
+          setConfirmAction(null);
+          if (res.ok) {
+            showAlert('Success', `Application ${status} successfully.`, 'success');
+            fetchData();
           } else {
-            Alert.alert('Success', `Application ${status} successfully.`);
+            const err = await res.json();
+            showAlert('Error', err.message || `Failed to ${actionLabel.toLowerCase()} application.`, 'error');
           }
-          fetchData();
-        } else {
-          const err = await res.json();
-          Alert.alert('Error', err.message || `Failed to ${actionLabel.toLowerCase()} application.`);
+        } catch {
+          showAlert('Error', 'Server error updating application.', 'error');
+        } finally {
+          setConfirmLoading(false);
         }
-      } catch {
-        Alert.alert('Error', 'Server error updating application.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm(`Are you sure you want to ${actionLabel.toLowerCase()} this application?`)) {
-        doUpdate();
-      }
-    } else {
-      Alert.alert(
-        `${actionLabel} Application`,
-        `Are you sure you want to ${actionLabel.toLowerCase()} this peer supporter application?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: actionLabel,
-            style: status === 'rejected' ? 'destructive' : 'default',
-            onPress: doUpdate,
-          },
-        ]
-      );
-    }
+      },
+    });
   };
 
   // Filtered Users
@@ -271,7 +295,7 @@ export default function UserManagementScreen() {
                   link.download = parsed.name || 'evidence_file';
                   link.click();
                 } else {
-                  Alert.alert('Document Attached', parsed.name || 'evidence_document');
+                  showAlert('Document Attached', parsed.name || 'evidence_document', 'info');
                 }
               }}
               activeOpacity={0.7}
@@ -321,7 +345,7 @@ export default function UserManagementScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('Notifications', 'No new user notifications.')}
+          onPress={() => showAlert('Notifications', 'No new user notifications.', 'info')}
           hitSlop={10}
           accessibilityLabel="Notifications"
         >
@@ -821,6 +845,24 @@ export default function UserManagementScreen() {
           </View>
         </Modal>
       )}
+
+      {/* Confirmation Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!confirmAction}
+        title={confirmAction?.title || ''}
+        message={confirmAction?.message || ''}
+        type={confirmAction?.type}
+        icon={confirmAction?.icon}
+        confirmText={confirmAction?.confirmText || 'OK'}
+        cancelText={confirmAction?.cancelText}
+        singleButton={confirmAction?.singleButton}
+        isDestructive={confirmAction?.isDestructive}
+        titleColor={confirmAction?.titleColor}
+        confirmColor={confirmAction?.confirmColor}
+        onConfirm={() => confirmAction?.onConfirm()}
+        onCancel={confirmAction?.cancelText !== null && !confirmAction?.singleButton ? () => setConfirmAction(null) : undefined}
+        loading={confirmLoading}
+      />
     </SafeAreaView>
   );
 }

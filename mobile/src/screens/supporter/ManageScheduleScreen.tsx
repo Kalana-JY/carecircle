@@ -24,6 +24,7 @@ import { useAuth } from '@/store/AuthContext';
 import { apiFetch } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 export default function ManageScheduleScreen() {
   const { user } = useAuth();
@@ -53,6 +54,37 @@ export default function ManageScheduleScreen() {
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingSession, setEditingSession] = useState<any | null>(null);
   const [selectedMember, setSelectedMember] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info' | 'confirm';
+    icon?: keyof typeof Ionicons.glyphMap;
+    confirmText?: string;
+    cancelText?: string | null;
+    singleButton?: boolean;
+    isDestructive?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState<boolean>(false);
+
+  const showAlert = (
+    title: string,
+    message: string,
+    type: 'success' | 'error' | 'warning' | 'info' = 'info',
+    onConfirm?: () => void
+  ) => {
+    setConfirmDialog({
+      title,
+      message,
+      type,
+      singleButton: true,
+      confirmText: 'OK',
+      onConfirm: () => {
+        setConfirmDialog(null);
+        if (onConfirm) onConfirm();
+      },
+    });
+  };
   // Form states
   const [title, setTitle] = useState<string>('');
   const [description, setDescription] = useState<string>('');
@@ -150,7 +182,7 @@ export default function ManageScheduleScreen() {
       setSessions(items);
     } catch (err: any) {
       console.error('[ManageSchedule] Fetch error:', err);
-      Alert.alert('Error', err.message || 'Failed to load schedule.');
+      showAlert('Error', err.message || 'Failed to load schedule.', 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -196,7 +228,7 @@ export default function ManageScheduleScreen() {
 
   const openEditModal = (session: any) => {
     if (session.status === 'booked') {
-      Alert.alert('Cannot Edit Time', 'This session is already booked. You can modify meeting links or notes, or cancel the session.');
+      showAlert('Cannot Edit Time', 'This session is already booked. You can modify meeting links or notes, or cancel the session.', 'warning');
     }
     setEditingSession(session);
     setTitle(session.title);
@@ -214,12 +246,12 @@ export default function ManageScheduleScreen() {
 
   const handleSubmit = async () => {
     if (!title.trim() || !date.trim() || !startTime.trim() || !endTime.trim()) {
-      Alert.alert('Validation Error', 'Please fill in Title, Date, Start Time, and End Time.');
+      showAlert('Validation Error', 'Please fill in Title, Date, Start Time, and End Time.', 'warning');
       return;
     }
 
     if (sessionType === 'physical' && !venue.trim()) {
-      Alert.alert('Validation Error', 'Please enter a venue for physical sessions.');
+      showAlert('Validation Error', 'Please enter a venue for physical sessions.', 'warning');
       return;
     }
 
@@ -229,17 +261,17 @@ export default function ManageScheduleScreen() {
     const end = new Date(endStr);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-      Alert.alert('Validation Error', 'Please verify your Date and Time formats (YYYY-MM-DD and HH:MM).');
+      showAlert('Validation Error', 'Please verify your Date and Time formats (YYYY-MM-DD and HH:MM).', 'warning');
       return;
     }
 
     if (start < new Date() && !editingSession) {
-      Alert.alert('Validation Error', 'The session start time must be in the future.');
+      showAlert('Validation Error', 'The session start time must be in the future.', 'warning');
       return;
     }
 
     if (end <= start) {
-      Alert.alert('Validation Error', 'The end time must be after the start time.');
+      showAlert('Validation Error', 'The end time must be after the start time.', 'warning');
       return;
     }
 
@@ -259,85 +291,77 @@ export default function ManageScheduleScreen() {
           method: 'PUT',
           body: payload,
         });
-        Alert.alert('Success', 'Session slot updated successfully.');
+        setModalVisible(false);
+        showAlert('Success', 'Session slot updated successfully.', 'success');
       } else {
         await apiFetch('/api/sessions', {
           method: 'POST',
           body: payload,
         });
-        Alert.alert('Success', 'Session slot created successfully.');
+        setModalVisible(false);
+        showAlert('Success', 'Session slot created successfully.', 'success');
       }
-      setModalVisible(false);
       fetchSchedule();
     } catch (err: any) {
       console.error('[ManageSchedule] Save error:', err);
-      Alert.alert('Error', err.message || 'Failed to save session slot.');
+      showAlert('Error', err.message || 'Failed to save session slot.', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleCancelSession = async (sessionId: string, isBooked: boolean) => {
-    const performCancel = async () => {
-      try {
-        await apiFetch(`/api/sessions/${sessionId}/cancel`, {
-          method: 'POST',
-        });
-        Alert.alert('Success', 'Session cancelled.');
-        fetchSchedule();
-      } catch (err: any) {
-        Alert.alert('Error', err.message || 'Failed to cancel session.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      const msg = isBooked 
-        ? 'This session is booked by a member. Cancelling will remove their booking. Proceed?'
-        : 'Are you sure you want to cancel/remove this support session?';
-      if (window.confirm(msg)) {
-        performCancel();
-      }
-    } else {
-      Alert.alert(
-        'Cancel Session',
-        isBooked 
-          ? 'This session is booked by a member. Cancelling will remove their booking. Are you sure?' 
-          : 'Are you sure you want to cancel this support session slot?',
-        [
-          { text: 'No', style: 'cancel' },
-          { text: 'Yes, Cancel', style: 'destructive', onPress: performCancel },
-        ]
-      );
-    }
+  const handleCancelSession = (sessionId: string, isBooked: boolean) => {
+    setConfirmDialog({
+      title: 'Cancel Session',
+      message: isBooked
+        ? 'This session is booked by a member. Cancelling will remove their booking. Sure you want to cancel?'
+        : 'Sure you want to cancel this support session slot?',
+      type: 'warning',
+      confirmText: 'Yes, Cancel',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          await apiFetch(`/api/sessions/${sessionId}/cancel`, {
+            method: 'POST',
+          });
+          setConfirmDialog(null);
+          showAlert('Success', 'Session cancelled.', 'success');
+          fetchSchedule();
+        } catch (err: any) {
+          showAlert('Error', err.message || 'Failed to cancel session.', 'error');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
   };
 
-  const handleDeleteSession = async (sessionId: string) => {
-    const performDelete = async () => {
-      try {
-        await apiFetch(`/api/sessions/${sessionId}`, {
-          method: 'DELETE',
-        });
-        Alert.alert('Success', 'Session slot deleted.');
-        fetchSchedule();
-      } catch (err: any) {
-        Alert.alert('Error', err.message || 'Failed to delete slot.');
-      }
-    };
-
-    if (Platform.OS === 'web') {
-      if (window.confirm('Delete this availability slot?')) {
-        performDelete();
-      }
-    } else {
-      Alert.alert(
-        'Delete Slot',
-        'Are you sure you want to delete this availability slot?',
-        [
-          { text: 'No', style: 'cancel' },
-          { text: 'Yes, Delete', style: 'destructive', onPress: performDelete },
-        ]
-      );
-    }
+  const handleDeleteSession = (sessionId: string) => {
+    setConfirmDialog({
+      title: 'Delete Slot',
+      message: 'Sure you want to delete this availability slot?',
+      type: 'error',
+      confirmText: 'Yes, Delete',
+      cancelText: 'Cancel',
+      isDestructive: true,
+      onConfirm: async () => {
+        setConfirmLoading(true);
+        try {
+          await apiFetch(`/api/sessions/${sessionId}`, {
+            method: 'DELETE',
+          });
+          setConfirmDialog(null);
+          showAlert('Success', 'Session slot deleted.', 'success');
+          fetchSchedule();
+        } catch (err: any) {
+          showAlert('Error', err.message || 'Failed to delete slot.', 'error');
+        } finally {
+          setConfirmLoading(false);
+        }
+      },
+    });
   };
 
   const filteredSessions = sessions.filter((s) => {
@@ -434,7 +458,7 @@ export default function ManageScheduleScreen() {
                         ? (raw.startsWith('http') ? raw : `https://${raw}`)
                         : `https://meet.jit.si/carecircle-session-${item._id.slice(-6)}`;
                       Linking.openURL(url).catch(() => {
-                        Alert.alert('Error', 'Unable to open meeting link.');
+                        showAlert('Error', 'Unable to open meeting link.', 'error');
                       });
                     }}
                     activeOpacity={0.7}
@@ -524,7 +548,7 @@ export default function ManageScheduleScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('Notifications', 'No new schedule notifications.')}
+          onPress={() => showAlert('Notifications', 'No new schedule notifications.', 'info')}
           hitSlop={12}
           accessibilityLabel="Notifications"
         >
@@ -761,33 +785,18 @@ export default function ManageScheduleScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* Booked Member Name Modal */}
-      <Modal
+      {/* Booked Member Bottom Sheet */}
+      <ConfirmationBottomSheet
         visible={!!selectedMember}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setSelectedMember(null)}
-      >
-        <View style={styles.memberModalOverlay}>
-          <View style={[styles.memberModalCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <View style={[styles.memberAvatarCircle, { backgroundColor: colors.brandLight }]}>
-              <Ionicons name="person" size={28} color={colors.brand} />
-            </View>
-            <Text style={[styles.memberModalHeading, { color: colors.textSecondary }]}>Booked Member</Text>
-            <Text style={[styles.memberModalName, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-              {selectedMember}
-            </Text>
-
-            <TouchableOpacity
-              style={[styles.memberModalCloseBtn, { backgroundColor: colors.brand }]}
-              onPress={() => setSelectedMember(null)}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.memberModalCloseBtnText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        title="Booked Member"
+        message={`This session slot is currently booked by ${selectedMember}.`}
+        icon="person"
+        iconBg={isDark ? '#1E3A8A40' : '#DBEAFE'}
+        iconColor={colors.brand}
+        confirmText="Close"
+        singleButton={true}
+        onConfirm={() => setSelectedMember(null)}
+      />
 
       {/* Date Picker Modal */}
       {showDatePicker && (
@@ -819,6 +828,22 @@ export default function ManageScheduleScreen() {
           onChange={onEndTimeChange}
         />
       )}
+
+      {/* Confirmation & Status Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!confirmDialog}
+        title={confirmDialog?.title || ''}
+        message={confirmDialog?.message || ''}
+        type={confirmDialog?.type}
+        icon={confirmDialog?.icon}
+        confirmText={confirmDialog?.confirmText || 'OK'}
+        cancelText={confirmDialog?.cancelText}
+        singleButton={confirmDialog?.singleButton}
+        isDestructive={confirmDialog?.isDestructive}
+        onConfirm={() => confirmDialog?.onConfirm()}
+        onCancel={confirmDialog?.cancelText !== null && !confirmDialog?.singleButton ? () => setConfirmDialog(null) : undefined}
+        loading={confirmLoading}
+      />
     </SafeAreaView>
   );
 }
