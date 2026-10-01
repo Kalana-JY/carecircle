@@ -18,6 +18,7 @@ import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SidePanel } from '../../components/SidePanel';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -26,6 +27,7 @@ export default function ProfileScreen() {
   const [isSidePanelOpen, setIsSidePanelOpen] = useState<boolean>(false);
   const [appStatus, setAppStatus] = useState<string>('none');
   const [bookings, setBookings] = useState<any[]>([]);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
 
   // Dynamic Theme Colors matching mockup
   const colors = {
@@ -243,7 +245,7 @@ export default function ProfileScreen() {
           {/* Logout */}
           <TouchableOpacity
             style={styles.menuRow}
-            onPress={signOut}
+            onPress={() => setShowLogoutConfirm(true)}
             activeOpacity={0.7}
           >
             <View style={styles.menuLeft}>
@@ -256,6 +258,21 @@ export default function ProfileScreen() {
 
       {/* Side Panel Drawer */}
       <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
+
+      {/* Logout Confirmation Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={showLogoutConfirm}
+        title="Logout"
+        message="Sure you want to log out?"
+        confirmText="Yes, Logout"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          signOut();
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </SafeAreaView>
   );
 }

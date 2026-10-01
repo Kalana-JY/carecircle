@@ -14,6 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '@/store/AuthContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 interface SidePanelProps {
   isOpen: boolean;
@@ -27,6 +28,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
   const colors = Colors[isDark ? 'dark' : 'light'];
+  const [showLogoutConfirm, setShowLogoutConfirm] = React.useState<boolean>(false);
 
   const getInitials = (name?: string) => {
     if (!name) return 'U';
@@ -341,10 +343,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               { borderTopColor: colors.border },
             ]}
             activeOpacity={0.7}
-            onPress={() => {
-              onClose();
-              signOut();
-            }}
+            onPress={() => setShowLogoutConfirm(true)}
           >
             <Ionicons
               name="log-out-outline"
@@ -355,6 +354,22 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* Logout Confirmation Sheet */}
+      <ConfirmationBottomSheet
+        visible={showLogoutConfirm}
+        title="Logout"
+        message="Sure you want to log out?"
+        confirmText="Yes, Logout"
+        cancelText="Cancel"
+        isDestructive={true}
+        onConfirm={() => {
+          setShowLogoutConfirm(false);
+          onClose();
+          signOut();
+        }}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
     </Modal>
   );
 }

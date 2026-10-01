@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Platform,
   KeyboardAvoidingView,
   StatusBar,
@@ -23,11 +22,20 @@ import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 export default function BecomeSupporterScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
+
+  // Alert Sheet State
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+    onConfirm?: () => void;
+  } | null>(null);
 
   // Toggle View
   const [showForm, setShowForm] = useState<boolean>(false);
@@ -109,7 +117,11 @@ export default function BecomeSupporterScreen() {
       setErrorMsg(null);
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need camera permission to take a photo.');
+        setAlertConfig({
+          title: 'Permission Denied',
+          message: 'We need camera permission to take a photo of your evidence document.',
+          type: 'warning',
+        });
         return;
       }
 
@@ -149,7 +161,11 @@ export default function BecomeSupporterScreen() {
       setErrorMsg(null);
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'We need gallery permission to select a photo.');
+        setAlertConfig({
+          title: 'Permission Denied',
+          message: 'We need gallery permission to select a document photo.',
+          type: 'warning',
+        });
         return;
       }
 
@@ -244,16 +260,12 @@ export default function BecomeSupporterScreen() {
         throw new Error(data.message || 'Failed to submit application');
       }
 
-      if (Platform.OS === 'web') {
-        window.alert('Application submitted successfully! Your request is pending review.');
-        navigation.goBack();
-      } else {
-        Alert.alert(
-          'Success',
-          'Application submitted successfully! Your request is pending review.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      }
+      setAlertConfig({
+        title: 'Application Submitted',
+        message: 'Your peer supporter application has been submitted successfully! Our team will review your credentials shortly.',
+        type: 'success',
+        onConfirm: () => navigation.goBack(),
+      });
     } catch (err: any) {
       console.error('[Apply] Submission Error:', err);
       setErrorMsg(err.message || 'Server error. Please try again.');
@@ -356,6 +368,25 @@ export default function BecomeSupporterScreen() {
             />
           </TouchableOpacity>
         </ScrollView>
+
+        <ConfirmationBottomSheet
+          visible={!!alertConfig}
+          title={alertConfig?.title || ''}
+          message={alertConfig?.message || ''}
+          type={alertConfig?.type || 'info'}
+          singleButton={true}
+          confirmText="OK"
+          onConfirm={() => {
+            const cb = alertConfig?.onConfirm;
+            setAlertConfig(null);
+            if (cb) cb();
+          }}
+          onCancel={() => {
+            const cb = alertConfig?.onConfirm;
+            setAlertConfig(null);
+            if (cb) cb();
+          }}
+        />
       </SafeAreaView>
     );
   }
@@ -536,6 +567,25 @@ export default function BecomeSupporterScreen() {
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ConfirmationBottomSheet
+        visible={!!alertConfig}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type || 'info'}
+        singleButton={true}
+        confirmText="OK"
+        onConfirm={() => {
+          const cb = alertConfig?.onConfirm;
+          setAlertConfig(null);
+          if (cb) cb();
+        }}
+        onCancel={() => {
+          const cb = alertConfig?.onConfirm;
+          setAlertConfig(null);
+          if (cb) cb();
+        }}
+      />
     </SafeAreaView>
   );
 }

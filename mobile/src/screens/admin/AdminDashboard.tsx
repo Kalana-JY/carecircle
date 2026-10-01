@@ -19,6 +19,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Fonts } from '@/constants/theme';
 import { API_URL } from '@/services/api';
 import { AdminSidePanel } from '@/components/AdminSidePanel';
+import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 interface AdminStats {
   totalUsers: number;
@@ -35,6 +36,11 @@ export default function AdminDashboard() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
 
   const colors = {
     background: isDark ? '#0F172A' : '#F8FAFC',
@@ -125,7 +131,13 @@ export default function AdminDashboard() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => Alert.alert('System Alerts', 'Platform operational. All backend microservices running.')}
+          onPress={() =>
+            setAlertConfig({
+              title: 'System Status',
+              message: 'Platform operational. All backend microservices running smoothly.',
+              type: 'info',
+            })
+          }
           hitSlop={10}
           accessibilityLabel="Notifications"
         >
@@ -307,6 +319,18 @@ export default function AdminDashboard() {
         isOpen={isSidePanelOpen}
         onClose={() => setIsSidePanelOpen(false)}
         currentRoute="AdminDashboard"
+      />
+
+      {/* Confirmation / Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!alertConfig}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type || 'info'}
+        singleButton={true}
+        confirmText="OK"
+        onConfirm={() => setAlertConfig(null)}
+        onCancel={() => setAlertConfig(null)}
       />
     </SafeAreaView>
   );
