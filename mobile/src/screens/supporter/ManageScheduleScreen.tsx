@@ -416,6 +416,28 @@ export default function ManageScheduleScreen() {
 
             {item.sessionType === 'physical' ? (
               <>
+                {/* Date */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>{formattedDate}</Text>
+                </View>
+
+                {/* Time */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    {formattedStart} - {formattedEnd}
+                  </Text>
+                </View>
+
+                {/* Venue */}
+                <View style={styles.detailRow}>
+                  <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
+                  <Text style={[styles.detailText, { color: colors.text }]}>
+                    {item.venue?.trim() || 'Venue to be confirmed'}
+                  </Text>
+                </View>
+
                 {/* Slots */}
                 <View style={styles.detailRow}>
                   <Ionicons name="albums-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
