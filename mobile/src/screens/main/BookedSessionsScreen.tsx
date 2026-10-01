@@ -175,12 +175,27 @@ export default function BookedSessionsScreen() {
     if (!selectedSessionForFeedback) return;
     setSubmittingFeedback(true);
     try {
-      // Feedback API submission simulation/endpoint
-      await new Promise((r) => setTimeout(r, 600));
+      const response = await fetch(`${API_URL}/api/sessions/${selectedSessionForFeedback._id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user?.token}`,
+        },
+        body: JSON.stringify({
+          rating,
+          comment: feedbackText.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || 'Failed to submit feedback');
+      }
+
       setFeedbackModalVisible(false);
       showAlert('Thank you!', 'Your feedback has been submitted successfully.', 'success');
-    } catch {
-      showAlert('Error', 'Failed to submit feedback. Please try again.', 'error');
+    } catch (err: any) {
+      showAlert('Error', err.message || 'Failed to submit feedback. Please try again.', 'error');
     } finally {
       setSubmittingFeedback(false);
     }

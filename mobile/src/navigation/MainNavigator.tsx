@@ -20,6 +20,7 @@ import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
+import SupporterFeedbackScreen from '../screens/supporter/SupporterFeedbackScreen';
 import BookSessionScreen from '../screens/main/BookSessionScreen';
 import BookedSessionsScreen from '../screens/main/BookedSessionsScreen';
 import PersonalInfoScreen from '../screens/main/PersonalInfoScreen';
@@ -69,6 +70,7 @@ export type MainStackParamList = {
   CreatePost: undefined;
   BecomeSupporter: undefined;
   ManageSchedule: undefined;
+  SupporterFeedback: undefined;
   BookSession: undefined;
   Conversations: undefined;
   ChatRoom: { conversationId: string; title: string };
@@ -187,6 +189,12 @@ export default function MainNavigator() {
       <Stack.Screen
         name="ManageSchedule"
         component={ManageScheduleScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="SupporterFeedback"
+        component={SupporterFeedbackScreen}
         options={{ headerShown: false }}
       />
 
