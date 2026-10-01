@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const { NOTIFICATION_TYPES } = require('../constants/goals');
 const { REMINDER_NOTIFICATION_TYPES } = require('../constants/reminders');
 const { WELLBEING_NOTIFICATION_TYPES } = require('../constants/wellbeing');
+const { SESSION_NOTIFICATION_TYPES } = require('../constants/sessions');
 
 const notificationSchema = new mongoose.Schema(
   {
@@ -17,7 +18,12 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: [...NOTIFICATION_TYPES, ...REMINDER_NOTIFICATION_TYPES, ...WELLBEING_NOTIFICATION_TYPES],
+      enum: [
+        ...NOTIFICATION_TYPES,
+        ...REMINDER_NOTIFICATION_TYPES,
+        ...WELLBEING_NOTIFICATION_TYPES,
+        ...SESSION_NOTIFICATION_TYPES,
+      ],
       required: true,
     },
     title: {

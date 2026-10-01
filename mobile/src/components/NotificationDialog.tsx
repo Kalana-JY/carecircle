@@ -2,7 +2,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { notificationApi, type ReminderNotification } from '@/services/api';
-import { onReminderFired, refreshReminderSchedule } from '@/services/reminderAlerts';
+import {
+  onReminderFired,
+  refreshReminderSchedule,
+  triggerSystemNotification,
+} from '@/services/reminderAlerts';
 
 const BRAND = '#3A7CA5';
 const POLL_MS = 20000;
@@ -11,15 +15,17 @@ const REMINDER_TYPES = new Set([
   'mood_log_reminder',
   'wellness_activity_reminder',
   'custom_reminder',
+  'session_reminder',
 ]);
 
 const labelFor = (type: string) => {
   if (type === 'wellness_activity_reminder') return 'Wellbeing reminder';
   if (type === 'mood_log_reminder') return 'Mood reminder';
+  if (type === 'session_reminder') return 'Session reminder';
   return 'Reminder';
 };
 
-/** Shows a due reminder as a dialog. Tips and other notifications stay in their own screens. */
+/** Shows a due reminder as a dialog and triggers system notification. */
 export function NotificationDialog() {
   const [queue, setQueue] = useState<ReminderNotification[]>([]);
   const [current, setCurrent] = useState<ReminderNotification | null>(null);
@@ -35,6 +41,10 @@ export function NotificationDialog() {
         const seen = new Set(existing.map((item) => item._id));
         if (current) seen.add(current._id);
         const added = fresh.filter((item) => !seen.has(item._id));
+        // Fire system notification for newly detected reminders
+        added.forEach((item) => {
+          triggerSystemNotification(item.title, item.body, { id: item._id, type: item.type });
+        });
         return added.length ? [...existing, ...added] : existing;
       });
     } catch {

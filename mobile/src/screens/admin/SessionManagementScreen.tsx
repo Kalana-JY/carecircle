@@ -223,7 +223,7 @@ export default function SessionManagementScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => showAlert('Notifications', 'No new session alerts.', 'info')}
+          onPress={() => navigation.navigate('Notifications')}
           hitSlop={10}
           accessibilityLabel="Notifications"
         >

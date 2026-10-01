@@ -4,6 +4,7 @@ const { ACHIEVEMENT_CATALOG } = require('../constants/goals');
 const { handleError, toUserId, syncUserNotifications } = require('../services/goalTracking');
 const { syncReminderNotifications } = require('../services/reminderService');
 const { deliverDailyWellbeing } = require('../services/wellbeingRecommendations');
+const { syncSessionReminders } = require('../services/sessionNotificationService');
 const mongoose = require('mongoose');
 
 exports.listNotifications = async (req, res) => {
@@ -12,6 +13,7 @@ exports.listNotifications = async (req, res) => {
     await syncUserNotifications(userId);
     await syncReminderNotifications(userId);
     await deliverDailyWellbeing(userId);
+    await syncSessionReminders(userId);
 
     const filter = { userId };
     if (req.query.unread === 'true') filter.read = false;

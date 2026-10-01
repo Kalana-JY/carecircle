@@ -105,21 +105,28 @@ export default function ProfileScreen() {
       />
 
       {/* Header with hamburger and centered title */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => setIsSidePanelOpen(true)}
-          style={styles.menuBtn}
+          style={styles.headerBtn}
           hitSlop={12}
           accessibilityLabel="Open side menu"
         >
-          <Ionicons name="menu-outline" size={26} color={colors.text} />
+          <Ionicons name="menu-outline" size={28} color={colors.text} />
         </TouchableOpacity>
 
         <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
           Account
         </Text>
 
-        <View style={{ width: 26 }} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Notifications')}
+          style={styles.headerBtn}
+          hitSlop={12}
+          accessibilityLabel="View notifications"
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -222,7 +229,7 @@ export default function ProfileScreen() {
               activeOpacity={0.7}
             >
               <View style={styles.menuLeft}>
-                <Ionicons name="alarm-outline" size={20} color={colors.text} />
+                <Ionicons name="notifications-outline" size={20} color={colors.text} />
                 <Text style={[styles.menuTitle, { color: colors.text }]}>Reminder</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
@@ -323,16 +330,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
   },
-  menuBtn: {
-    padding: 2,
+  headerBtn: {
+    padding: 6,
   },
   headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.2,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   scrollContainer: {
     paddingHorizontal: 20,

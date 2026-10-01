@@ -570,7 +570,7 @@ export default function ManageScheduleScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => showAlert('Notifications', 'No new schedule notifications.', 'info')}
+          onPress={() => navigation.navigate('Notifications')}
           hitSlop={12}
           accessibilityLabel="Notifications"
         >

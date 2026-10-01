@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { reminderApi, type WellbeingReminder } from '@/services/api';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,29 +19,42 @@ const browserNotification = () => {
   return notification || null;
 };
 
-const askPermission = async () => {
-  const NotificationApi = browserNotification();
-  if (!NotificationApi || NotificationApi.permission !== 'default') return;
-  try {
-    await NotificationApi.requestPermission();
-  } catch {
-    // The in-app dialog still appears if the browser blocks permission.
+export const requestNotificationPermissions = async () => {
+  if (Platform.OS === 'web') {
+    const NotificationApi = browserNotification();
+    if (!NotificationApi || NotificationApi.permission !== 'default') return;
+    try {
+      await NotificationApi.requestPermission();
+    } catch {
+      // Browser restriction
+    }
   }
 };
 
-const showBrowserNotification = (title: string, body: string) => {
-  const NotificationApi = browserNotification();
-  if (!NotificationApi || NotificationApi.permission !== 'granted') return;
+export const triggerSystemNotification = async (title: string, body: string, data?: any) => {
   try {
-    new NotificationApi(title, { body });
+    // Haptic feedback alert on mobile devices
+    if (Platform.OS !== 'web') {
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
   } catch {
-    // Some browsers only allow this after a click. The in-app dialog still opens.
+    // Non-fatal if device doesn't support haptics
+  }
+
+  if (Platform.OS === 'web') {
+    const NotificationApi = browserNotification();
+    if (!NotificationApi || NotificationApi.permission !== 'granted') return;
+    try {
+      new NotificationApi(title, { body });
+    } catch {
+      // Browser restriction
+    }
   }
 };
 
-/** Schedules the next occurrence so a reminder can pop up at its set time. */
+/** Schedules the next occurrence so a reminder can trigger on time. */
 export const scheduleReminderAlerts = async (reminders: WellbeingReminder[]) => {
-  await askPermission();
+  await requestNotificationPermissions();
   const keep = new Set<string>();
 
   reminders.forEach((reminder) => {
@@ -55,7 +70,10 @@ export const scheduleReminderAlerts = async (reminders: WellbeingReminder[]) => 
 
     const timer = setTimeout(() => {
       scheduled.delete(reminder._id);
-      showBrowserNotification(reminder.resolvedTitle, reminder.resolvedMessage);
+      triggerSystemNotification(reminder.resolvedTitle, reminder.resolvedMessage, {
+        reminderId: reminder._id,
+        type: reminder.type,
+      });
       listeners.forEach((listener) => listener());
     }, delay);
 
@@ -70,6 +88,10 @@ export const scheduleReminderAlerts = async (reminders: WellbeingReminder[]) => 
 };
 
 export const refreshReminderSchedule = async () => {
-  const list = await reminderApi.list('active');
-  await scheduleReminderAlerts(list.items);
+  try {
+    const list = await reminderApi.list('active');
+    await scheduleReminderAlerts(list.items);
+  } catch {
+    // API unavailable
+  }
 };

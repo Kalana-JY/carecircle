@@ -310,10 +310,10 @@ export default function HomeScreen() {
         </Text>
 
         <TouchableOpacity
-          onPress={() => navigation.navigate('Reminder')}
+          onPress={() => navigation.navigate('Notifications')}
           style={styles.headerBtn}
           hitSlop={12}
-          accessibilityLabel="Reminders and notifications"
+          accessibilityLabel="View notifications"
         >
           <Ionicons name="notifications-outline" size={24} color={colors.text} />
         </TouchableOpacity>

@@ -2,6 +2,12 @@ const mongoose = require('mongoose');
 const Session = require('../models/Session');
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
 const SessionFeedback = require('../models/SessionFeedback');
+const {
+  notifySessionBooked,
+  notifySessionUpdated,
+  notifySessionCancelled,
+  notifySessionDeleted,
+} = require('../services/sessionNotificationService');
 
 // Helper helper to verify if the user is an approved supporter
 const checkSupporterApproval = async (userId) => {
@@ -231,6 +237,13 @@ const updateSession = async (req, res) => {
 
     await session.save();
 
+    // Notify member if this was a booked session
+    if (session.userId) {
+      notifySessionUpdated(session, req.user).catch((err) =>
+        console.error('[Session] Error sending update notification:', err)
+      );
+    }
+
     res.json({
       message: 'Session updated successfully.',
       session,
@@ -264,6 +277,13 @@ const deleteSession = async (req, res) => {
       return res.status(400).json({
         message: 'Cannot delete a booked session. Please cancel the session instead to notify the user.',
       });
+    }
+
+    // Notify member if booked session was deleted
+    if (session.userId) {
+      notifySessionDeleted(session, req.user).catch((err) =>
+        console.error('[Session] Error sending delete notification:', err)
+      );
     }
 
     await Session.findByIdAndDelete(req.params.id);
@@ -307,6 +327,11 @@ const bookSession = async (req, res) => {
 
     const populated = await Session.findById(session._id).populate('supporterId', 'name email phoneNumber');
 
+    // Notify both Supporter and Member
+    notifySessionBooked(session, req.user).catch((err) =>
+      console.error('[Session] Error sending booking notification:', err)
+    );
+
     res.json({
       message: 'Session booked successfully!',
       session: populated,
@@ -336,7 +361,11 @@ const cancelSession = async (req, res) => {
     }
 
     if (isSupporter) {
-      // Supporter cancels the session entirely
+      // Supporter cancels the session entirely -> notify Member if booked
+      notifySessionCancelled(session, 'supporter', req.user).catch((err) =>
+        console.error('[Session] Error sending supporter cancel notification:', err)
+      );
+
       session.status = 'cancelled';
       await session.save();
       return res.json({
@@ -346,7 +375,11 @@ const cancelSession = async (req, res) => {
     }
 
     if (isBookedClient) {
-      // Client cancels their booking. The slot returns to available.
+      // Client cancels their booking -> notify Supporter
+      notifySessionCancelled(session, 'member', req.user).catch((err) =>
+        console.error('[Session] Error sending member cancel notification:', err)
+      );
+
       session.userId = null;
       session.status = 'available';
       await session.save();
