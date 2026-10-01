@@ -28,6 +28,11 @@ export default function ProfileScreen() {
   const [appStatus, setAppStatus] = useState<string>('none');
   const [bookings, setBookings] = useState<any[]>([]);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState<boolean>(false);
+  const [alertConfig, setAlertConfig] = useState<{
+    title: string;
+    message: string;
+    type?: 'success' | 'error' | 'warning' | 'info';
+  } | null>(null);
 
   // Dynamic Theme Colors matching mockup
   const colors = {
@@ -193,68 +198,94 @@ export default function ProfileScreen() {
                 <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
               </TouchableOpacity>
               <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+              {/* Feedback & Reviews Navigation */}
+              <TouchableOpacity
+                style={styles.menuRow}
+                onPress={() => navigation.navigate('SupporterFeedback')}
+                activeOpacity={0.7}
+              >
+                <View style={styles.menuLeft}>
+                  <Ionicons name="star-outline" size={20} color={colors.text} />
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>Feedback & Reviews</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <View style={[styles.divider, { backgroundColor: colors.border }]} />
             </>
           )}
 
-          {/* Notification */}
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => Alert.alert('Notifications', 'No new notifications right now.')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="notifications-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Notification</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
-        </View>
+            {/* Notification */}
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() =>
+                setAlertConfig({
+                  title: 'Notifications',
+                  message: 'No new notifications right now.',
+                  type: 'info',
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="notifications-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Notification</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Preferences, Support & Logout Card */}
-        <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          {/* App Preferences */}
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => Alert.alert('App Preferences', 'Personalize your notification and display settings.')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="eye-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuTitle, { color: colors.text }]}>App Preferences</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+          {/* Preferences, Support & Logout Card */}
+          <View style={[styles.menuCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            {/* App Preferences */}
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() =>
+                setAlertConfig({
+                  title: 'App Preferences',
+                  message: 'Personalize your notification and display settings.',
+                  type: 'info',
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="eye-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuTitle, { color: colors.text }]}>App Preferences</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Help and Support */}
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => navigation.navigate('HelpSupport')}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="help-circle-outline" size={20} color={colors.text} />
-              <Text style={[styles.menuTitle, { color: colors.text }]}>Help and Support</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-          </TouchableOpacity>
+            {/* Help and Support */}
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => navigation.navigate('HelpSupport')}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="help-circle-outline" size={20} color={colors.text} />
+                <Text style={[styles.menuTitle, { color: colors.text }]}>Help and Support</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
 
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-          {/* Logout */}
-          <TouchableOpacity
-            style={styles.menuRow}
-            onPress={() => setShowLogoutConfirm(true)}
-            activeOpacity={0.7}
-          >
-            <View style={styles.menuLeft}>
-              <Ionicons name="log-out-outline" size={20} color={colors.logoutRed} />
-              <Text style={[styles.menuTitle, { color: colors.logoutRed }]}>Logout</Text>
-            </View>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+            {/* Logout */}
+            <TouchableOpacity
+              style={styles.menuRow}
+              onPress={() => setShowLogoutConfirm(true)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.menuLeft}>
+                <Ionicons name="log-out-outline" size={20} color={colors.logoutRed} />
+                <Text style={[styles.menuTitle, { color: colors.logoutRed }]}>Logout</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
 
       {/* Side Panel Drawer */}
       <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
@@ -272,6 +303,18 @@ export default function ProfileScreen() {
           signOut();
         }}
         onCancel={() => setShowLogoutConfirm(false)}
+      />
+
+      {/* Status / Alert Bottom Sheet */}
+      <ConfirmationBottomSheet
+        visible={!!alertConfig}
+        title={alertConfig?.title || ''}
+        message={alertConfig?.message || ''}
+        type={alertConfig?.type || 'info'}
+        singleButton={true}
+        confirmText="OK"
+        onConfirm={() => setAlertConfig(null)}
+        onCancel={() => setAlertConfig(null)}
       />
     </SafeAreaView>
   );

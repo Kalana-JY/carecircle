@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Session = require('../models/Session');
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
+const SessionFeedback = require('../models/SessionFeedback');
 
 // Helper helper to verify if the user is an approved supporter
 const checkSupporterApproval = async (userId) => {
@@ -359,6 +360,136 @@ const cancelSession = async (req, res) => {
   }
 };
 
+// @desc    Submit feedback for a session
+// @route   POST /api/sessions/:id/feedback
+// @access  Private
+const submitSessionFeedback = async (req, res) => {
+  try {
+    const { rating, comment } = req.body;
+    const session = await Session.findById(req.params.id);
+
+    if (!session) {
+      return res.status(404).json({ message: 'Session not found.' });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: 'Please provide a rating between 1 and 5 stars.' });
+    }
+
+    // Check if feedback already exists for this session and user
+    let feedback = await SessionFeedback.findOne({
+      sessionId: session._id,
+      userId: req.user._id,
+    });
+
+    if (feedback) {
+      feedback.rating = rating;
+      feedback.comment = comment ? comment.trim() : '';
+      await feedback.save();
+    } else {
+      feedback = await SessionFeedback.create({
+        sessionId: session._id,
+        supporterId: session.supporterId,
+        userId: req.user._id,
+        rating,
+        comment: comment ? comment.trim() : '',
+        sessionTitle: session.title,
+        sessionType: session.sessionType,
+      });
+    }
+
+    const populated = await SessionFeedback.findById(feedback._id)
+      .populate('userId', 'name email avatarUrl')
+      .populate('sessionId', 'title startTime endTime sessionType venue');
+
+    res.status(201).json({
+      message: 'Feedback submitted successfully.',
+      feedback: populated,
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
+// @desc    Get all feedback received by the logged in peer supporter
+// @route   GET /api/sessions/my-feedback
+// @access  Private
+const getSupporterFeedback = async (req, res) => {
+  try {
+    const supporterId = req.user._id;
+    const { rating, sessionId, sessionType, search } = req.query;
+
+    let filter = { supporterId };
+
+    if (rating && !isNaN(Number(rating))) {
+      filter.rating = Number(rating);
+    }
+
+    if (sessionId) {
+      filter.sessionId = sessionId;
+    }
+
+    if (sessionType && ['online', 'physical'].includes(sessionType)) {
+      filter.sessionType = sessionType;
+    }
+
+    if (search && search.trim()) {
+      filter.$or = [
+        { comment: { $regex: search.trim(), $options: 'i' } },
+        { sessionTitle: { $regex: search.trim(), $options: 'i' } },
+      ];
+    }
+
+    const feedbacks = await SessionFeedback.find(filter)
+      .populate('userId', 'name email avatarUrl')
+      .populate('sessionId', 'title startTime endTime sessionType venue')
+      .sort({ createdAt: -1 });
+
+    // Aggregate summary across ALL feedbacks for this supporter
+    const allFeedbacks = await SessionFeedback.find({ supporterId });
+    const totalFeedbacks = allFeedbacks.length;
+    const sumRatings = allFeedbacks.reduce((sum, f) => sum + f.rating, 0);
+    const averageRating = totalFeedbacks > 0 ? Number((sumRatings / totalFeedbacks).toFixed(1)) : 0;
+
+    const ratingBreakdown = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    allFeedbacks.forEach((f) => {
+      if (ratingBreakdown[f.rating] !== undefined) {
+        ratingBreakdown[f.rating]++;
+      }
+    });
+
+    // Extract unique sessions that have feedback
+    const sessionMap = new Map();
+    allFeedbacks.forEach((f) => {
+      const sId = f.sessionId ? f.sessionId.toString() : '';
+      if (sId && !sessionMap.has(sId)) {
+        sessionMap.set(sId, {
+          sessionId: sId,
+          sessionTitle: f.sessionTitle || 'Support Session',
+          sessionType: f.sessionType || 'online',
+          feedbackCount: 1,
+        });
+      } else if (sId) {
+        const item = sessionMap.get(sId);
+        item.feedbackCount++;
+      }
+    });
+    const sessionsList = Array.from(sessionMap.values());
+
+    res.json({
+      feedbacks,
+      summary: {
+        totalFeedbacks,
+        averageRating,
+        ratingBreakdown,
+        sessionsList,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+};
+
 module.exports = {
   createSession,
   getSessions,
@@ -368,4 +499,6 @@ module.exports = {
   deleteSession,
   bookSession,
   cancelSession,
+  submitSessionFeedback,
+  getSupporterFeedback,
 };

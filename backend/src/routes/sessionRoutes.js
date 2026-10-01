@@ -10,6 +10,8 @@ const {
   deleteSession,
   bookSession,
   cancelSession,
+  submitSessionFeedback,
+  getSupporterFeedback,
 } = require('../controllers/sessionController');
 
 // All routes require authentication
@@ -18,6 +20,7 @@ router.use(protect);
 // Schedule & Bookings specific views
 router.get('/my-schedule', getMySchedule);
 router.get('/my-bookings', getMyBookings);
+router.get('/my-feedback', getSupporterFeedback);
 
 // Core CRUD
 router.post('/', createSession);
@@ -28,5 +31,6 @@ router.delete('/:id', deleteSession);
 // Booking actions
 router.post('/:id/book', bookSession);
 router.post('/:id/cancel', cancelSession);
+router.post('/:id/feedback', submitSessionFeedback);
 
 module.exports = router;
