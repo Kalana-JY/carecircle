@@ -17,6 +17,7 @@ import ReportsScreen from '../screens/main/ReportsScreen';
 import ResourcesScreen from '../screens/main/ResourcesScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
+import ReminderScreen from '../screens/main/ReminderScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
@@ -58,6 +59,7 @@ export type MainStackParamList = {
   Journals: undefined;
   WellnessActivities: undefined;
   Profile: undefined;
+  Reminder: undefined;
   PersonalInfo: undefined;
   HelpSupport: undefined;
   FAQ: undefined;
@@ -202,6 +204,12 @@ export default function MainNavigator() {
         name="Profile"
         component={ProfileScreen}
         options={{ title: 'Profile' }}
+      />
+
+      <Stack.Screen
+        name="Reminder"
+        component={ReminderScreen}
+        options={{ headerShown: false }}
       />
 
       <Stack.Screen
