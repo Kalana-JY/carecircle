@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Dimensions,
   Alert,
   StatusBar,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -40,8 +41,173 @@ interface ResourceItem {
   type: string;
 }
 
+// 5 Expressive Vector Mood Faces matching the mockup design
+function ExpressiveMoodFace({
+  type,
+  size = 46,
+  isSelected,
+}: {
+  type: 'terrible' | 'bad' | 'neutral' | 'good' | 'great';
+  size?: number;
+  isSelected?: boolean;
+}) {
+  const configs = {
+    terrible: {
+      bgColor: '#EB4D4B',
+      eyebrows: true,
+      mouthType: 'frown_angled',
+    },
+    bad: {
+      bgColor: '#FA8231',
+      eyebrows: false,
+      mouthType: 'frown',
+    },
+    neutral: {
+      bgColor: '#778CA3',
+      eyebrows: false,
+      mouthType: 'neutral',
+    },
+    good: {
+      bgColor: '#20BF6B',
+      eyebrows: false,
+      mouthType: 'smile',
+    },
+    great: {
+      bgColor: '#26DE81',
+      eyebrows: false,
+      mouthType: 'wide_smile',
+    },
+  };
+
+  const cfg = configs[type];
+  const radius = size / 2;
+
+  return (
+    <View
+      style={[
+        styles.moodFaceCircle,
+        {
+          width: size,
+          height: size,
+          borderRadius: radius,
+          backgroundColor: cfg.bgColor,
+          transform: isSelected ? [{ scale: 1.12 }] : [{ scale: 1 }],
+          borderWidth: isSelected ? 3 : 0,
+          borderColor: '#FFFFFF',
+          shadowColor: cfg.bgColor,
+          shadowOffset: { width: 0, height: isSelected ? 4 : 2 },
+          shadowOpacity: isSelected ? 0.45 : 0.25,
+          shadowRadius: isSelected ? 6 : 3,
+          elevation: isSelected ? 5 : 2,
+        },
+      ]}
+    >
+      {/* Eyes & Eyebrows */}
+      <View style={{ width: size * 0.54, flexDirection: 'row', justifyContent: 'space-between', marginTop: -2 }}>
+        {/* Left Eye */}
+        <View style={{ alignItems: 'center' }}>
+          {cfg.eyebrows && (
+            <View
+              style={{
+                width: 7,
+                height: 2.5,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 1,
+                transform: [{ rotate: '25deg' }],
+                marginBottom: 2,
+              }}
+            />
+          )}
+          <View style={{ width: 5.5, height: 5.5, borderRadius: 3, backgroundColor: '#FFFFFF' }} />
+        </View>
+
+        {/* Right Eye */}
+        <View style={{ alignItems: 'center' }}>
+          {cfg.eyebrows && (
+            <View
+              style={{
+                width: 7,
+                height: 2.5,
+                backgroundColor: '#FFFFFF',
+                borderRadius: 1,
+                transform: [{ rotate: '-25deg' }],
+                marginBottom: 2,
+              }}
+            />
+          )}
+          <View style={{ width: 5.5, height: 5.5, borderRadius: 3, backgroundColor: '#FFFFFF' }} />
+        </View>
+      </View>
+
+      {/* Mouth */}
+      {cfg.mouthType === 'frown_angled' && (
+        <View
+          style={{
+            width: 14,
+            height: 7,
+            borderTopWidth: 3,
+            borderColor: '#FFFFFF',
+            borderTopLeftRadius: 7,
+            borderTopRightRadius: 7,
+            marginTop: 4,
+          }}
+        />
+      )}
+      {cfg.mouthType === 'frown' && (
+        <View
+          style={{
+            width: 14,
+            height: 7,
+            borderTopWidth: 3,
+            borderColor: '#FFFFFF',
+            borderTopLeftRadius: 7,
+            borderTopRightRadius: 7,
+            marginTop: 5,
+          }}
+        />
+      )}
+      {cfg.mouthType === 'neutral' && (
+        <View
+          style={{
+            width: 14,
+            height: 3,
+            backgroundColor: '#FFFFFF',
+            borderRadius: 1.5,
+            marginTop: 6,
+          }}
+        />
+      )}
+      {cfg.mouthType === 'smile' && (
+        <View
+          style={{
+            width: 14,
+            height: 7,
+            borderBottomWidth: 3,
+            borderColor: '#FFFFFF',
+            borderBottomLeftRadius: 7,
+            borderBottomRightRadius: 7,
+            marginTop: 4,
+          }}
+        />
+      )}
+      {cfg.mouthType === 'wide_smile' && (
+        <View
+          style={{
+            width: 16,
+            height: 8,
+            backgroundColor: '#FFFFFF',
+            borderBottomLeftRadius: 8,
+            borderBottomRightRadius: 8,
+            marginTop: 4,
+          }}
+        />
+      )}
+    </View>
+  );
+}
+
 export default function HomeScreen() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigation = useNavigation<CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Home'>, MainStackNavigationProp>>();
   const isDark = useColorScheme() === 'dark';
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
@@ -60,20 +226,21 @@ export default function HomeScreen() {
     border: isDark ? '#2E2E2E' : '#E6E8EB',
     brand: '#245B8B',
     brandLight: isDark ? '#1E3A5F' : '#E8F1F9',
+    heroBlue: isDark ? '#3B6FB6' : '#5586EE',
+    actionBlue: isDark ? '#4672BE' : '#6892E8',
+    supporterBlue: isDark ? '#4672BE' : '#6892E8',
     accentGreen: '#34C759',
     accentPurple: '#AF52DE',
     accentOrange: '#FF9500',
-    avatarBg: isDark ? '#245B8B' : '#E8F1F9',
-    avatarText: isDark ? '#FFFFFF' : '#245B8B',
     quoteBg: isDark ? '#1E293B' : '#EDF2F7',
   };
 
-  const moods = [
-    { label: 'Glad', emoji: '😊', value: 'glad' },
-    { label: 'Calm', emoji: '😌', value: 'calm' },
-    { label: 'Blue', emoji: '😔', value: 'blue' },
-    { label: 'Anxious', emoji: '😰', value: 'anxious' },
-    { label: 'Tired', emoji: '😴', value: 'tired' },
+  const moodOptions: { id: string; label: string; type: 'terrible' | 'bad' | 'neutral' | 'good' | 'great'; value: string }[] = [
+    { id: '1', label: 'Awful', type: 'terrible', value: 'terrible' },
+    { id: '2', label: 'Bad', type: 'bad', value: 'bad' },
+    { id: '3', label: 'Okay', type: 'neutral', value: 'neutral' },
+    { id: '4', label: 'Good', type: 'good', value: 'good' },
+    { id: '5', label: 'Great', type: 'great', value: 'great' },
   ];
 
   const activeCircles: CircleItem[] = [
@@ -101,134 +268,168 @@ export default function HomeScreen() {
       });
   }, []);
 
-  const handleSignOut = () => {
-    if (Platform.OS === 'web') {
-      const confirmSignOut = window.confirm('Are you sure you want to sign out?');
-      if (confirmSignOut) {
-        signOut();
-      }
-    } else {
-      Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: signOut },
-      ]);
-    }
+  const handleMoodSelect = (moodItem: typeof moodOptions[0]) => {
+    setSelectedMood(moodItem.id);
+    navigation.navigate('Mood', { selectedMood: moodItem.label, hubTab: 'moods' });
   };
 
-  const handleMoodSelect = (moodLabel: string) => {
-    setSelectedMood(moodLabel);
-    navigation.navigate('Mood', { selectedMood: moodLabel, hubTab: 'moods' });
-  };
+  // Greeting based on time of day
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good Morning!';
+    if (hour < 17) return 'Good Afternoon!';
+    return 'Good Evening!';
+  }, []);
 
-  const todayLabel = new Intl.DateTimeFormat('en-US', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
-
-  // Get user initials for avatar
-  const getInitials = (name?: string) => {
-    if (!name) return 'U';
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .substring(0, 2);
-  };
+  // Formatted date string (e.g. Thursday, October 1)
+  const formattedDate = useMemo(() => {
+    return new Intl.DateTimeFormat('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+    }).format(new Date());
+  }, []);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
-      {/* Custom Header (Simplified: no name, greeting, or logout) */}
-      <View style={[styles.header, { borderColor: colors.border, backgroundColor: colors.card }]}>
-        <TouchableOpacity onPress={() => setIsSidePanelOpen(true)} style={[styles.avatar, { backgroundColor: colors.avatarBg }]} activeOpacity={0.8}>
-          <Text style={[styles.avatarText, { color: colors.avatarText }]}>
-            {getInitials(user?.name)}
-          </Text>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+      {/* Top Header matching mockup */}
+      <View style={[styles.header, { backgroundColor: colors.background }]}>
+        <TouchableOpacity
+          onPress={() => setIsSidePanelOpen(true)}
+          style={styles.headerBtn}
+          hitSlop={12}
+          accessibilityLabel="Open side menu"
+        >
+          <Ionicons name="menu-outline" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.brand, fontFamily: Fonts.serif || Fonts.rounded || 'System' }]}>
-          CareCircle
+
+        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+          Home
         </Text>
+
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Reminder')}
+          style={styles.headerBtn}
+          hitSlop={12}
+          accessibilityLabel="Reminders and notifications"
+        >
+          <Ionicons name="notifications-outline" size={24} color={colors.text} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.dateLabel, { color: colors.textSecondary }]}>{todayLabel}</Text>
-        <View style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>How does today feel?</Text>
-          <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]}>A small check-in can help you notice your patterns.</Text>
-          <View style={styles.moodRow}>
-            {moods.map((mood) => {
-              const isSelected = selectedMood === mood.label;
+        {/* ========================================================================= */}
+        {/* 1. HERO GREETING BANNER CARD                                              */}
+        {/* ========================================================================= */}
+        <View style={[styles.heroCard, { backgroundColor: colors.heroBlue }]}>
+          <View style={styles.heroLeft}>
+            <Text style={styles.heroGreeting}>{greeting}</Text>
+            <Text style={styles.heroUserName} numberOfLines={1}>
+              {user?.name || 'Jason Smith'}
+            </Text>
+            <Text style={styles.heroDate}>{formattedDate}</Text>
+          </View>
+          <View style={styles.heroImageContainer}>
+            <Image
+              source={require('../../../assets/images/home_hero_thoughts.png')}
+              style={styles.heroImage}
+              resizeMode="contain"
+            />
+          </View>
+        </View>
+
+        {/* ========================================================================= */}
+        {/* 2. TWO ACTION CARDS ROW (Chat with Community & Take a Session)            */}
+        {/* ========================================================================= */}
+        <View style={styles.actionRow}>
+          {/* Card 1: Chat with Community */}
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.actionBlue }]}
+            onPress={() => navigation.navigate('Community')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionCardTitle}>Chat with{'\n'}Community</Text>
+            <Image
+              source={require('../../../assets/images/home_chat_community.png')}
+              style={styles.actionCardImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+
+          {/* Card 2: Take a Session with Peer */}
+          <TouchableOpacity
+            style={[styles.actionCard, { backgroundColor: colors.actionBlue }]}
+            onPress={() => navigation.navigate('BookSession')}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.actionCardTitle}>Take a Session{'\n'}with Peer</Text>
+            <Image
+              source={require('../../../assets/images/home_take_session.png')}
+              style={styles.actionCardImage}
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+
+        {/* ========================================================================= */}
+        {/* 3. MOOD CHECK-IN CARD ("How do you feel today?")                           */}
+        {/* ========================================================================= */}
+        <View style={[styles.moodCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.moodCardTitle, { color: colors.text }]}>
+            How do you feel today?
+          </Text>
+          <View style={styles.moodFacesRow}>
+            {moodOptions.map((mood) => {
+              const isSelected = selectedMood === mood.id;
               return (
                 <TouchableOpacity
-                  key={mood.value}
-                  style={[
-                    styles.moodItem,
-                    isSelected && {
-                      backgroundColor: colors.brandLight,
-                      borderColor: colors.brand,
-                      transform: [{ scale: 1.05 }],
-                    },
-                    { borderColor: colors.border },
-                  ]}
-                  onPress={() => handleMoodSelect(mood.label)}
-                  activeOpacity={0.8}
+                  key={mood.id}
+                  onPress={() => handleMoodSelect(mood)}
+                  activeOpacity={0.75}
+                  style={styles.moodFaceBtn}
+                  accessibilityLabel={`Select ${mood.label} mood`}
                 >
-                  <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-                  <Text style={[styles.moodLabel, { color: isSelected ? colors.brand : colors.textSecondary }]}>
-                    {mood.label}
-                  </Text>
+                  <ExpressiveMoodFace
+                    type={mood.type}
+                    size={48}
+                    isSelected={isSelected}
+                  />
                 </TouchableOpacity>
               );
             })}
           </View>
-          <TouchableOpacity
-            style={[styles.saveButton, { backgroundColor: colors.text }]}
-            onPress={() => selectedMood && navigation.navigate('Mood', { selectedMood, hubTab: 'moods' })}
-            activeOpacity={0.85}
-          >
-            <Text style={[styles.saveButtonText, { color: colors.background }]}>Save today&apos;s entry</Text>
-          </TouchableOpacity>
         </View>
 
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Mood history</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Mood', { hubTab: 'moods' })} activeOpacity={0.7}>
-            <Text style={[styles.sectionLink, { color: colors.brand }]}>Last 14 days</Text>
-          </TouchableOpacity>
-        </View>
+        {/* ========================================================================= */}
+        {/* 4. BECOME A PEER SUPPORTER BANNER                                         */}
+        {/* ========================================================================= */}
+        <TouchableOpacity
+          style={[styles.supporterBanner, { backgroundColor: colors.supporterBlue }]}
+          onPress={() => navigation.navigate('BecomeSupporter')}
+          activeOpacity={0.82}
+        >
+          <View style={styles.supporterLeft}>
+            <Text style={styles.supporterBannerText}>
+              Would you like to{'\n'}Become a Peer Supporter
+            </Text>
+          </View>
+          <View style={styles.supporterImageContainer}>
+            <Image
+              source={require('../../../assets/images/home_become_supporter.png')}
+              style={styles.supporterBannerImage}
+              resizeMode="contain"
+            />
+          </View>
+        </TouchableOpacity>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.historyRow}>
-          {moodHistory.map((entry) => (
-            <TouchableOpacity key={entry._id} style={[styles.historyItem, { borderColor: colors.border }]} onPress={() => navigation.navigate('Mood', { hubTab: 'moods' })}>
-              <Text style={[styles.historyDay, { color: colors.textSecondary }]}>{dateOnly(entry.date).slice(-2)}</Text>
-              <Text style={styles.historyEmoji}>{moods.find((mood) => mood.label === entry.mood)?.emoji || '🙂'}</Text>
-              <Text style={[styles.historyMood, { color: colors.textSecondary }]}>{entry.mood}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>Journal entries</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Mood', { hubTab: 'journal' })} activeOpacity={0.7}>
-            <Text style={[styles.sectionLink, { color: colors.brand }]}>See all</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.resourcesList}>
-          {journalEntries.map((entry) => (
-            <TouchableOpacity key={entry._id} style={[styles.journalRow, { backgroundColor: colors.card, borderColor: colors.border }]} onPress={() => navigation.navigate('Mood', { hubTab: 'journal' })} activeOpacity={0.8}>
-              <View style={[styles.journalDot, { backgroundColor: colors.text }]} />
-              <View style={styles.journalCopy}>
-                <Text style={[styles.journalMeta, { color: colors.textSecondary }]}>{dateOnly(entry.date)}{entry.mood ? ` · ${entry.mood}` : ''}</Text>
-                <Text style={[styles.journalTitle, { color: colors.text }]} numberOfLines={1}>{entry.title || 'Untitled entry'}</Text>
-                <Text style={[styles.journalBody, { color: colors.textSecondary }]} numberOfLines={2}>{entry.body}</Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-          {journalEntries.length === 0 && <Text style={[styles.emptyText, { color: colors.textSecondary }]}>Your recent reflections will appear here.</Text>}
-        </View>
-
-        {/* Daily Quote Sanctuary Widget */}
+        {/* ========================================================================= */}
+        {/* 5. DAILY QUOTE SANCTUARY WIDGET                                           */}
+        {/* ========================================================================= */}
         <View style={[styles.quoteCard, { backgroundColor: colors.quoteBg }]}>
           <View style={styles.quoteIconRow}>
             <Ionicons name="chatbox-ellipses-outline" size={24} color={colors.brand} style={{ opacity: 0.6 }} />
@@ -239,12 +440,14 @@ export default function HomeScreen() {
           <Text style={[styles.quoteAuthor, { color: colors.textSecondary }]}>— Dan Millman</Text>
         </View>
 
-        {/* Active Care Circles Horizontal Scroll */}
+        {/* ========================================================================= */}
+        {/* 6. ACTIVE CARE CIRCLES HORIZONTAL SCROLL                                  */}
+        {/* ========================================================================= */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
             Active Care Circles
           </Text>
-          <TouchableOpacity onPress={() => Alert.alert('Explore Circles', 'Explore circles feature coming soon...')} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => navigation.navigate('Community')} activeOpacity={0.7}>
             <Text style={[styles.sectionLink, { color: colors.brand }]}>See All</Text>
           </TouchableOpacity>
         </View>
@@ -264,9 +467,8 @@ export default function HomeScreen() {
               activeOpacity={0.8}
               onPress={() => Alert.alert('Join Circle', `Would you like to enter the "${circle.name}" circle?`)}
             >
-              {/* Colored left bar for design aesthetic */}
               <View style={[styles.leftAccentBar, { backgroundColor: circle.color }]} />
-              <View style={circleHeaderStyles.circleHeader}>
+              <View style={styles.circleHeader}>
                 <View style={[styles.circleIconContainer, { backgroundColor: circle.color + '1A' }]}>
                   <Ionicons name={circle.icon} size={22} color={circle.color} />
                 </View>
@@ -287,7 +489,9 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        {/* Self-Care Resources */}
+        {/* ========================================================================= */}
+        {/* 7. SELF-CARE TOOLS                                                        */}
+        {/* ========================================================================= */}
         <View style={styles.sectionHeader}>
           <Text style={[styles.sectionTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
             Self-Care Tools
@@ -327,20 +531,15 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
+
+        <View style={{ height: 20 }} />
       </ScrollView>
 
+      {/* Side Panel Drawer */}
       <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
     </SafeAreaView>
   );
 }
-
-const circleHeaderStyles = StyleSheet.create({
-  circleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-});
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -351,156 +550,219 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  headerBtn: {
+    padding: 6,
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  scrollContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 40,
+  },
+  // 1. Hero Greeting Card
+  heroCard: {
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    minHeight: 128,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 3,
+        shadowColor: '#245B8B',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  heroLeft: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingRight: 8,
+  },
+  heroGreeting: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.3,
+    marginBottom: 2,
+  },
+  heroUserName: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 6,
+  },
+  heroDate: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#DCE7FA',
+  },
+  heroImageContainer: {
+    width: 110,
+    height: 105,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroImage: {
+    width: 105,
+    height: 100,
+  },
+  // 2. Action Cards Row
+  actionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 14,
+  },
+  actionCard: {
+    flex: 1,
+    borderRadius: 16,
+    padding: 14,
+    height: 106,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#245B8B',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
       },
       android: {
         elevation: 2,
       },
     }),
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  menuButton: {
-    padding: 2,
-  },
-  headerTitle: {
-    fontSize: 26,
+  actionCardTitle: {
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: -0.3,
+    color: '#FFFFFF',
+    lineHeight: 19,
+    flex: 1,
+    paddingRight: 4,
   },
-  avatar: {
-    width: 36,
-    height: 36,
+  actionCardImage: {
+    width: 62,
+    height: 68,
+  },
+  // 3. Mood Card
+  moodCard: {
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  dateLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  card: {
-    borderRadius: 16,
-    padding: 20,
     borderWidth: 1,
-    marginBottom: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+    alignItems: 'center',
+    marginBottom: 14,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 8,
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
       },
       android: {
         elevation: 1,
       },
     }),
   },
-  cardTitle: {
-    fontSize: 17,
+  moodCardTitle: {
+    fontSize: 16,
     fontWeight: '700',
-    marginBottom: 4,
-  },
-  cardSubtitle: {
-    fontSize: 13,
     marginBottom: 16,
-    lineHeight: 18,
+    textAlign: 'center',
   },
-  moodRow: {
+  moodFacesRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    width: '100%',
+    paddingHorizontal: 6,
   },
-  moodItem: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    width: (width - 80) / 5,
-  },
-  moodEmoji: {
-    fontSize: 24,
-    marginBottom: 6,
-  },
-  moodLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  saveButton: {
-    borderRadius: 12,
-    alignItems: 'center',
-    paddingVertical: 13,
-    marginTop: 18,
-  },
-  saveButtonText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  historyRow: {
-    gap: 8,
-    paddingBottom: 24,
-  },
-  historyItem: {
-    width: 54,
-    minHeight: 70,
-    borderRadius: 14,
-    borderWidth: 1,
+  moodFaceBtn: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 7,
+    padding: 2,
   },
-  historyDay: {
-    fontSize: 11,
+  moodFaceCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // 4. Become a Supporter Banner
+  supporterBanner: {
+    borderRadius: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+    minHeight: 88,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#245B8B',
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.12,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  supporterLeft: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  supporterBannerText: {
+    fontSize: 15,
     fontWeight: '700',
+    color: '#FFFFFF',
+    lineHeight: 21,
   },
-  historyEmoji: {
-    fontSize: 20,
-    marginVertical: 2,
+  supporterImageContainer: {
+    width: 80,
+    height: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  historyMood: {
-    fontSize: 9,
-    fontWeight: '600',
+  supporterBannerImage: {
+    width: 78,
+    height: 68,
   },
+  // Other Sections (Quote, Circles, Resources)
   quoteCard: {
     borderRadius: 16,
-    padding: 20,
-    marginBottom: 24,
+    padding: 18,
+    marginBottom: 20,
     position: 'relative',
     overflow: 'hidden',
   },
   quoteIconRow: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   quoteText: {
-    fontSize: 15,
+    fontSize: 14,
     fontStyle: 'italic',
-    lineHeight: 22,
+    lineHeight: 20,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   quoteAuthor: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'right',
   },
@@ -508,42 +770,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   sectionTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
   sectionLink: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   circlesContainer: {
-    paddingRight: 20,
-    paddingBottom: 24,
-    gap: 14,
+    paddingRight: 16,
+    paddingBottom: 20,
+    gap: 12,
   },
   circleCard: {
-    width: 170,
-    height: 140,
+    width: 165,
+    height: 135,
     borderRadius: 16,
     borderWidth: 1,
-    padding: 16,
+    padding: 14,
     justifyContent: 'space-between',
     position: 'relative',
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.03,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
   },
   leftAccentBar: {
     position: 'absolute',
@@ -552,10 +803,15 @@ const styles = StyleSheet.create({
     bottom: 0,
     width: 4,
   },
+  circleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   circleIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -571,9 +827,9 @@ const styles = StyleSheet.create({
     color: '#28cd41',
   },
   circleName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 19,
+    lineHeight: 18,
   },
   circleFooter: {
     flexDirection: 'row',
@@ -581,65 +837,19 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   memberCount: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
   resourcesList: {
-    gap: 12,
-  },
-  journalRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  journalDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 5,
-    marginRight: 10,
-  },
-  journalCopy: {
-    flex: 1,
-  },
-  journalMeta: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  journalTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    marginBottom: 3,
-  },
-  journalBody: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  emptyText: {
-    fontSize: 13,
-    paddingVertical: 12,
+    gap: 10,
   },
   resourceRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 14,
+    padding: 13,
     borderRadius: 14,
     borderWidth: 1,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.02,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 1,
-      },
-    }),
   },
   resourceLeft: {
     flexDirection: 'row',
@@ -648,9 +858,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resourceIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -665,7 +875,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   resourceTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   resourceRight: {
