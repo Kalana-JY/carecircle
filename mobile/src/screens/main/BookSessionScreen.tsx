@@ -314,7 +314,7 @@ export default function BookSessionScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => showAlert('Notifications', 'No new session notifications.', 'info')}
+          onPress={() => navigation.navigate('Notifications')}
           hitSlop={12}
           accessibilityLabel="Notifications"
         >

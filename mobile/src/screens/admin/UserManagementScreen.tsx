@@ -345,7 +345,7 @@ export default function UserManagementScreen() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() => showAlert('Notifications', 'No new user notifications.', 'info')}
+          onPress={() => navigation.navigate('Notifications')}
           hitSlop={10}
           accessibilityLabel="Notifications"
         >

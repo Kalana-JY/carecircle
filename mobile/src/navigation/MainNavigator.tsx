@@ -18,6 +18,7 @@ import ResourcesScreen from '../screens/main/ResourcesScreen';
 import ForumDetailScreen from '../screens/forum/ForumDetailScreen';
 import CreatePostScreen from '../screens/forum/CreatePostScreen';
 import ReminderScreen from '../screens/main/ReminderScreen';
+import NotificationsScreen from '../screens/main/NotificationsScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
 import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
@@ -60,6 +61,7 @@ export type MainStackParamList = {
   WellnessActivities: undefined;
   Profile: undefined;
   Reminder: undefined;
+  Notifications: undefined;
   PersonalInfo: undefined;
   HelpSupport: undefined;
   FAQ: undefined;
@@ -209,6 +211,12 @@ export default function MainNavigator() {
       <Stack.Screen
         name="Reminder"
         component={ReminderScreen}
+        options={{ headerShown: false }}
+      />
+
+      <Stack.Screen
+        name="Notifications"
+        component={NotificationsScreen}
         options={{ headerShown: false }}
       />
 

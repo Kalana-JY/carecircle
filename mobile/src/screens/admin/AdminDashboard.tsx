@@ -131,13 +131,7 @@ export default function AdminDashboard() {
 
         <TouchableOpacity
           style={styles.headerBtn}
-          onPress={() =>
-            setAlertConfig({
-              title: 'System Status',
-              message: 'Platform operational. All backend microservices running smoothly.',
-              type: 'info',
-            })
-          }
+          onPress={() => navigation.navigate('Notifications')}
           hitSlop={10}
           accessibilityLabel="Notifications"
         >
