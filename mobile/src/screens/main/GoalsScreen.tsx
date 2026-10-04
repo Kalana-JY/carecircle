@@ -62,7 +62,7 @@ export default function GoalsScreen() {
       ] = await Promise.all([
         goalApi.list(),
         goalApi.dashboard(),
-        achievementApi.list(),
+        achievementApi.list().catch(() => null),
         goalApi.weekly(),
         loadTodaySteps().catch(() => ({
           steps: 0,
@@ -76,7 +76,7 @@ export default function GoalsScreen() {
 
       setGoals(goalRes.data || []);
       setDashboard(dashRes.data);
-      setAchievements(achieveRes.data.catalog || []);
+      setAchievements(achieveRes?.data.catalog || []);
       setReport(weeklyRes.data);
 
       setTodaySteps({
