@@ -76,15 +76,7 @@ app.get("/api/ping-crisis", (req, res) => {
   res.json({ ok: true, route: "crisis-ping" });
 });
 
-app.post("/api/crisis-support", (req, res, next) => {
-  req.url = "/";
-  return crisisSupportRoutes(req, res, next);
-});
-
-app.get("/api/crisis-support", (req, res, next) => {
-  req.url = "/";
-  return crisisSupportRoutes(req, res, next);
-});
+mount('/api/crisis-support', crisisSupportRoutes);
 
 // ── Socket.IO ──────────────────────────────────────────────────────────
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';

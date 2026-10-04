@@ -123,13 +123,15 @@ export function CrisisSupportPanel({ coords }: Props) {
       <Text style={styles.section}>Your Crisis Contacts</Text>
       {contacts.map((contact) => (
         <View key={contact._id} style={styles.row}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{contact.name.slice(0, 1).toUpperCase()}</Text>
+          </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.rowTitle}>{contact.name}</Text>
-            <Text style={styles.rowMeta}>{contact.relationship || 'Personal contact'} · {contact.phone}</Text>
+            <Text style={styles.rowMeta}>{contact.relationship || 'Personal contact'}</Text>
           </View>
-          <TouchableOpacity style={styles.call} onPress={() => callNumber(contact.phone)}>
-            <Ionicons name="call" size={14} color="#FFFFFF" />
-            <Text style={styles.callText}>Call</Text>
+          <TouchableOpacity style={styles.callCircle} onPress={() => callNumber(contact.phone)} accessibilityLabel={`Call ${contact.name}`}>
+            <Ionicons name="call" size={16} color="#FFFFFF" />
           </TouchableOpacity>
           <TouchableOpacity onPress={() => removeContact(contact)} style={styles.iconBtn}>
             <Ionicons name="trash-outline" size={18} color="#BA1A1A" />
@@ -207,6 +209,9 @@ const styles = StyleSheet.create({
   },
   rowTitle: { fontSize: 15, fontWeight: '800', color: '#1C242C' },
   rowMeta: { color: '#6B7380', marginTop: 3, fontSize: 13 },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#E7F1F8', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: BRAND, fontWeight: '800' },
+  callCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' },
   call: { backgroundColor: BRAND, borderRadius: 18, paddingVertical: 8, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
   callText: { color: '#FFFFFF', fontWeight: '800', fontSize: 13 },
   iconBtn: { padding: 6 },

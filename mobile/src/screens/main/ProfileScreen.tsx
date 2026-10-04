@@ -19,6 +19,7 @@ import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SidePanel } from '../../components/SidePanel';
 import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
+import { ProfileAvatar } from '../../components/MoodHubChrome';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -104,21 +105,17 @@ export default function ProfileScreen() {
         backgroundColor={colors.background}
       />
 
-      {/* Header with hamburger and centered title */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => setIsSidePanelOpen(true)}
-          style={styles.headerBtn}
-          hitSlop={12}
-          accessibilityLabel="Open side menu"
+          style={[styles.profileAvatar, { backgroundColor: colors.brandLight }]}
+          accessibilityLabel="Open menu"
         >
-          <Ionicons name="menu-outline" size={28} color={colors.text} />
+          <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
         </TouchableOpacity>
-
-        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
-          Account
+        <Text style={[styles.brand, { color: colors.brand, fontFamily: Fonts.serif || Fonts.rounded || 'System' }]}>
+          CareCircle
         </Text>
-
         <TouchableOpacity
           onPress={() => navigation.navigate('Notifications')}
           style={styles.headerBtn}
@@ -336,10 +333,17 @@ const styles = StyleSheet.create({
   headerBtn: {
     padding: 6,
   },
-  headerTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: -0.3,
+  profileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  brand: {
+    fontSize: 26,
+    fontWeight: '700',
   },
   scrollContainer: {
     paddingHorizontal: 20,

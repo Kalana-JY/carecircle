@@ -29,3 +29,6 @@ mobile/ios/.xcode.env.local
 
 # Environment variables
 .env
+
+# Local dev database
+backend/.data/

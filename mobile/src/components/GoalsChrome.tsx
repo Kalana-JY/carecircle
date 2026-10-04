@@ -10,7 +10,7 @@ import {
 
 import { Fonts } from '@/constants/theme';
 import { useAuth } from '@/store/AuthContext';
-import { getInitials } from './MoodHubChrome';
+import { ProfileAvatar } from './MoodHubChrome';
 import {
   GOAL_BRAND,
   GOAL_TABS,
@@ -61,9 +61,7 @@ export function GoalsChrome({
             style={styles.avatar}
             activeOpacity={0.8}
           >
-            <Text style={styles.avatarText}>
-              {getInitials(user?.name)}
-            </Text>
+            <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
           </TouchableOpacity>
         </View>
       </ImageBackground>

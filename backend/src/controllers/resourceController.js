@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Resource = require('../models/MentalHealthResource');
 const User = require('../models/User');
+const WellnessActivity = require('../models/WellnessActivity');
 const { isAdminUser } = require('../middleware/authMiddleware');
 const {
   RESOURCE_TYPES,
@@ -444,10 +445,27 @@ const collectPreferenceSignals = async (user) => {
     .lean();
   reviewedResources.forEach((resource) => addResourceSignals(resource, 2));
 
+  const activities = await WellnessActivity.find({ userId: user._id, deletedAt: null }).select('title category');
+  const activityLabels = [];
+  activities.forEach((activity) => {
+    const category = typeof activity.category === 'string' ? activity.category.trim() : '';
+    const title = typeof activity.title === 'string' ? activity.title.trim() : '';
+    if (category) {
+      categoryCount[category] = (categoryCount[category] || 0) + 2;
+      topicCount[category] = (topicCount[category] || 0) + 2;
+      activityLabels.push(category);
+    }
+    if (title) {
+      topicCount[title] = (topicCount[title] || 0) + 1;
+      activityLabels.push(title);
+    }
+  });
+
   const ranked = (counts) => Object.keys(counts).sort((a, b) => counts[b] - counts[a]);
   return {
     categories: ranked(categoryCount).slice(0, 5),
     topics: ranked(topicCount).slice(0, 8),
+    activities: [...new Set(activityLabels)].slice(0, 8),
     excludeIds: (populated.bookmarks || []).map((resource) => resource._id),
   };
 };
@@ -455,10 +473,11 @@ const collectPreferenceSignals = async (user) => {
 const getRecommendations = async (req, res) => {
   try {
     const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 12, 1), 30);
-    const { categories, topics, excludeIds } = await collectPreferenceSignals(req.user);
+    const { categories, topics, activities, excludeIds } = await collectPreferenceSignals(req.user);
+    const exact = (values) => values.map((value) => new RegExp(`^${escapeRegex(value)}$`, 'i'));
     const matchConditions = [];
-    if (categories.length) matchConditions.push({ category: { $in: categories } });
-    if (topics.length) matchConditions.push({ topics: { $in: topics } });
+    if (categories.length) matchConditions.push({ category: { $in: exact(categories) } });
+    if (topics.length) matchConditions.push({ topics: { $in: exact(topics) } });
 
     const baseFilter = {
       isPublished: true,
@@ -491,6 +510,7 @@ const getRecommendations = async (req, res) => {
         basedOn: {
           categories,
           topics,
+          activities,
         },
       },
     });

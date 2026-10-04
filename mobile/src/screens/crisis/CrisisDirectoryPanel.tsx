@@ -96,7 +96,7 @@ export function CrisisDirectoryPanel({ coords }: Props) {
           <View style={styles.actions}>
             <TouchableOpacity style={styles.call} onPress={() => callNumber(item.phone)} disabled={!item.phone}>
               <Ionicons name="call" size={14} color="#FFFFFF" />
-              <Text style={styles.callText}>Call Now</Text>
+              <Text style={styles.callText}>Call</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.directions} onPress={() => openDirections(item)}>
               <Ionicons name="navigate-outline" size={14} color="#1C242C" />
