@@ -1,3 +1,5 @@
+const fs = require('fs');
+const path = require('path');
 const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
@@ -6,9 +8,15 @@ const connectDB = async () => {
     let mongoUri = process.env.MONGO_URI;
 
     if (!mongoUri) {
-      console.log('No MONGO_URI found — starting in-memory MongoDB for local dev');
+      console.log('No MONGO_URI found — starting local MongoDB for dev');
+      const dbPath = path.join(__dirname, '../../.data/mongo');
+      fs.mkdirSync(dbPath, { recursive: true });
       const mongod = await MongoMemoryServer.create({
-        instance: { launchTimeout: 120000 },
+        instance: {
+          launchTimeout: 120000,
+          dbPath,
+          storageEngine: 'wiredTiger',
+        },
       });
       mongoUri = mongod.getUri();
       // keep reference so the process doesn't exit and mongod stays alive
@@ -17,6 +25,8 @@ const connectDB = async () => {
 
     await mongoose.connect(mongoUri, { ignoreUndefined: true });
     console.log('MongoDB connected');
+    const { seedSupportLibrary } = require('../services/seedSupportLibrary');
+    await seedSupportLibrary();
 
     const User = require('../models/User');
     const bcrypt = require('bcryptjs');

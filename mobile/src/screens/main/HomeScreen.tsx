@@ -210,12 +210,12 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<CompositeNavigationProp<BottomTabNavigationProp<MainTabParamList, 'Home'>, MainStackNavigationProp>>();
   const isDark = useColorScheme() === 'dark';
+  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [moodHistory, setMoodHistory] = useState<MoodEntry[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
   
   // Custom Side Panel State
-  const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
 
   // Dynamic Theme Colors
   const colors = {
@@ -535,7 +535,6 @@ export default function HomeScreen() {
         <View style={{ height: 20 }} />
       </ScrollView>
 
-      {/* Side Panel Drawer */}
       <SidePanel isOpen={isSidePanelOpen} onClose={() => setIsSidePanelOpen(false)} />
     </SafeAreaView>
   );

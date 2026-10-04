@@ -16,7 +16,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { MoodHubChrome, type HubTab } from '../../components/MoodHubChrome';
-import { SidePanel } from '../../components/SidePanel';
 import { MoodCalendarModal } from '../../components/MoodCalendar';
 import { MoodWeekStrip, buildRecentDays } from '../../components/MoodWeekStrip';
 import { dateOnly, journalApi, JournalEntry, moodApi, MoodEntry, wellnessActivityApi, WellnessActivity } from '@/services/api';
@@ -50,7 +49,6 @@ export default function MoodHubScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const [hubTab, setHubTab] = useState<HubTab>(route.params?.hubTab || 'moods');
-  const [panelOpen, setPanelOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -339,7 +337,7 @@ export default function MoodHubScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
         showsVerticalScrollIndicator={false}
       >
-        <MoodHubChrome activeTab={hubTab} onTabChange={setHubTab} onAvatarPress={() => setPanelOpen(true)} />
+        <MoodHubChrome activeTab={hubTab} onTabChange={setHubTab} onAvatarPress={() => navigation.navigate('Profile')} />
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         {hubTab === 'moods' && (
@@ -608,7 +606,6 @@ export default function MoodHubScreen() {
         </View>
       </Modal>
 
-      <SidePanel isOpen={panelOpen} onClose={() => setPanelOpen(false)} />
     </SafeAreaView>
   );
 }

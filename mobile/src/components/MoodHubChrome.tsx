@@ -1,5 +1,5 @@
 import React from 'react';
-import { ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Fonts } from '@/constants/theme';
 import { useAuth } from '@/store/AuthContext';
 import heroBanner from '../../assets/images/hero-banner.png';
@@ -27,6 +27,13 @@ export function longDateLabel() {
   return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
 }
 
+export function ProfileAvatar({ name, uri, size = 40 }: { name?: string; uri?: string; size?: number }) {
+  if (uri) {
+    return <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} />;
+  }
+  return <Text style={styles.avatarText}>{getInitials(name)}</Text>;
+}
+
 export function getInitials(name?: string) {
   if (!name) return 'U';
   return name
@@ -50,7 +57,7 @@ export function MoodHubChrome({ activeTab, onTabChange, onAvatarPress }: ChromeP
     <View>
       <View style={styles.header}>
         <TouchableOpacity onPress={onAvatarPress} style={styles.avatar} activeOpacity={0.8}>
-          <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
+          <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
         </TouchableOpacity>
         <Text style={styles.brand}>CareCircle</Text>
       </View>

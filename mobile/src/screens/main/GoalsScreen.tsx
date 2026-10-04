@@ -1,9 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
-
-import { SidePanel } from '../../components/SidePanel';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { GoalsChrome } from '../../components/GoalsChrome';
 import { GoalsOverview } from '../goals/GoalsOverview';
 import { GoalForm } from '../goals/GoalForm';
@@ -28,8 +26,8 @@ import {
 import type { GoalHubTab } from '@/constants/goals';
 
 export default function GoalsScreen() {
+  const navigation = useNavigation<any>();
   const [tab, setTab] = useState<GoalHubTab>('overview');
-  const [panelOpen, setPanelOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -146,7 +144,7 @@ export default function GoalsScreen() {
       <GoalsChrome
         activeTab={tab}
         onTabChange={onTabChange}
-        onAvatarPress={() => setPanelOpen(true)}
+        onAvatarPress={() => navigation.navigate('Profile')}
       />
 
       <ScrollView
@@ -196,11 +194,6 @@ export default function GoalsScreen() {
           />
         ) : null}
       </ScrollView>
-
-      <SidePanel
-        isOpen={panelOpen}
-        onClose={() => setPanelOpen(false)}
-      />
     </SafeAreaView>
   );
 }

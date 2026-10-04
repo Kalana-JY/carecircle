@@ -242,6 +242,23 @@ describe('mental health resource API', { timeout: 120000, concurrency: 1 }, () =
     assert.ok(response.body.meta.basedOn.topics.includes('anxiety'));
   });
 
+  it('uses recorded wellbeing activities when recommending resources', async () => {
+    const WellnessActivity = require('../src/models/WellnessActivity');
+    await WellnessActivity.create({
+      userId: member._id,
+      title: 'Morning grounding',
+      category: 'Mindfulness',
+      date: new Date(),
+      duration: 10,
+      targetPerWeek: 3,
+    });
+
+    const response = await request(port, 'GET', '/api/resources/recommendations', { token: memberToken });
+    assert.equal(response.status, 200);
+    assert.ok(response.body.meta.basedOn.activities.some((item) => /mindfulness|grounding/i.test(item)));
+    assert.ok(response.body.items.some((item) => item._id === video._id));
+  });
+
   it('lets an admin update and delete a resource', async () => {
     const updated = await request(port, 'PUT', `/api/resources/${video._id}`, {
       token: adminToken,

@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Fonts } from '@/constants/theme';
-import { getInitials } from './MoodHubChrome';
+import { ProfileAvatar } from './MoodHubChrome';
 import { useAuth } from '@/store/AuthContext';
 
 export const BRAND = '#3A7CA5';
@@ -33,7 +33,7 @@ export function ResourcesChrome({ activeTab, onTabChange, onAvatarPress, section
     <View>
       <View style={styles.header}>
         <TouchableOpacity onPress={onAvatarPress} style={styles.avatar} activeOpacity={0.8}>
-          <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
+          <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
         </TouchableOpacity>
         <View style={styles.brandWrap}>
           <Text style={styles.brand}>CareCircle</Text>

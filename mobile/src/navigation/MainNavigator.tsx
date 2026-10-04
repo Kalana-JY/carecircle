@@ -50,6 +50,7 @@ export type MainTabParamList = {
   Community: undefined;
   Mood: { selectedMood?: string; hubTab?: HubTab } | undefined;
   Goals: undefined;
+  Resources: undefined;
   Profile: undefined;
 };
 
@@ -123,6 +124,12 @@ function MainTabs() {
         name="Goals"
         component={GoalsScreen}
         options={{ title: 'Goals' }}
+      />
+
+      <Tab.Screen
+        name="Resources"
+        component={ResourcesScreen}
+        options={{ title: 'Resources' }}
       />
 
       <Tab.Screen
