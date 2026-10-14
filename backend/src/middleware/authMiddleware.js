@@ -1,13 +1,15 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { getJwtSecret } = require('../config/jwt');
 
 const cleanEnv = (value) => String(value || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '');
 
 const isAdminUser = (user) => {
-  if (!user?.email) return false;
-  const email = user.email.toLowerCase();
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  const email = String(user.email || '').toLowerCase();
   const adminEmail = cleanEnv(process.env.ADMIN_EMAIL).toLowerCase();
-  return Boolean((adminEmail && email === adminEmail) || email.includes('admin'));
+  return Boolean(adminEmail && email === adminEmail);
 };
 
 const attachUserFromToken = async (authorizationHeader) => {
@@ -18,7 +20,7 @@ const attachUserFromToken = async (authorizationHeader) => {
   const token = authorizationHeader.split(' ')[1];
   if (!token) return null;
 
-  const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback_secret');
+  const decoded = jwt.verify(token, getJwtSecret());
   return User.findById(decoded.id).select('-password');
 };
 
@@ -36,7 +38,7 @@ const protect = async (req, res, next) => {
     req.user = user;
     return next();
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    console.error('Auth middleware error:', error?.name || 'Error');
     return res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };

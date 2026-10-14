@@ -37,7 +37,10 @@ const connectDB = async () => {
       const existing = await User.findOne({ email });
       if (!existing) {
         const hashedPassword = await bcrypt.hash(password, 10);
-        await User.create({ name: 'Admin', email, phoneNumber: phone, password: hashedPassword });
+        await User.create({ name: 'Admin', email, phoneNumber: phone, password: hashedPassword, role: 'admin' });
+      } else if (existing.role !== 'admin') {
+        existing.role = 'admin';
+        await existing.save();
       }
     }
   } catch (error) {

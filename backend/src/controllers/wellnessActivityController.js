@@ -1,4 +1,6 @@
 const WellnessActivity = require('../models/WellnessActivity');
+const { summarizeActivityWeek } = require('../services/activityWeek');
+const { dateKey } = require('../services/moodInsights');
 
 const isValidDate = (value) => {
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
@@ -10,7 +12,7 @@ const handleError = (res, error) => {
   if (error.name === 'ValidationError' || error.name === 'CastError') {
     return res.status(400).json({ message: 'Invalid wellness activity input' });
   }
-  console.error(error);
+  console.error('Wellness activity request failed:', error?.name || 'Error');
   return res.status(500).json({ message: 'Server error' });
 };
 
@@ -70,6 +72,18 @@ const deleteActivity = async (req, res) => {
   } catch (error) { return handleError(res, error); }
 };
 
+const getActivitySummary = async (req, res) => {
+  try {
+    const today = req.query.today || dateKey();
+    if (!isValidDate(today)) return res.status(400).json({ message: 'today must be a valid date' });
+
+    const activities = await WellnessActivity.find({ userId: req.user._id, deletedAt: null });
+    return res.json(summarizeActivityWeek(activities, today));
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
 const logActivity = async (req, res) => {
   try {
     const { date, minutes = 0 } = req.body;
@@ -85,4 +99,4 @@ const logActivity = async (req, res) => {
   } catch (error) { return handleError(res, error); }
 };
 
-module.exports = { createActivity, listActivities, updateActivity, deleteActivity, logActivity };
+module.exports = { createActivity, listActivities, updateActivity, deleteActivity, logActivity, getActivitySummary };

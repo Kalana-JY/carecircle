@@ -73,6 +73,47 @@ describe('mental health resource API', { timeout: 120000, concurrency: 1 }, () =
     if (mongod) await mongod.stop();
   });
 
+  it('does not treat an email containing admin as an administrator', async () => {
+    const lookalike = await User.create({
+      name: 'Lookalike',
+      email: 'campus.admin.helper@carecircle.test',
+      phoneNumber: '+10000000091',
+      password: 'password',
+      role: 'member',
+    });
+    const response = await request(port, 'POST', '/api/resources', {
+      token: signToken(lookalike),
+      body: { title: 'Should stay blocked', type: 'article', content: 'Nope' },
+    });
+    assert.equal(response.status, 403);
+  });
+
+  it('allows a user whose stored role is admin', async () => {
+    const appointed = await User.create({
+      name: 'Appointed Admin',
+      email: 'lead@carecircle.test',
+      phoneNumber: '+10000000092',
+      password: 'password',
+      role: 'admin',
+    });
+    const response = await request(port, 'POST', '/api/resources', {
+      token: signToken(appointed),
+      body: {
+        title: 'Role Based Admin Guide',
+        type: 'article',
+        category: 'Support',
+        content: 'Created by a role admin.',
+        source: 'CareCircle',
+        author: 'Lead',
+      },
+    });
+    assert.equal(response.status, 201);
+    const removed = await request(port, 'DELETE', `/api/resources/${response.body.resource._id}`, {
+      token: signToken(appointed),
+    });
+    assert.equal(removed.status, 200);
+  });
+
   it('rejects resource creation from a non-admin user', async () => {
     const response = await request(port, 'POST', '/api/resources', {
       token: memberToken,

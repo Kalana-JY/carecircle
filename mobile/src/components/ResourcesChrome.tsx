@@ -26,7 +26,7 @@ type Props = {
 
 export function ResourcesChrome({ activeTab, onTabChange, onAvatarPress, sectionTitle }: Props) {
   const { user } = useAuth();
-  const isAdmin = Boolean(user?.isAdmin || user?.email?.toLowerCase().includes('admin'));
+  const isAdmin = Boolean(user?.isAdmin);
   const tabs = TABS.filter((tab) => !tab.adminOnly || isAdmin);
 
   return (

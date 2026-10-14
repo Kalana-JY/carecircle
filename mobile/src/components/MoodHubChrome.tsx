@@ -56,7 +56,13 @@ export function MoodHubChrome({ activeTab, onTabChange, onAvatarPress }: ChromeP
   return (
     <View>
       <View style={styles.header}>
-        <TouchableOpacity onPress={onAvatarPress} style={styles.avatar} activeOpacity={0.8}>
+        <TouchableOpacity
+          onPress={onAvatarPress}
+          style={styles.avatar}
+          activeOpacity={0.8}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
           <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
         </TouchableOpacity>
         <Text style={styles.brand}>CareCircle</Text>
@@ -79,6 +85,9 @@ export function MoodHubChrome({ activeTab, onTabChange, onAvatarPress }: ChromeP
               onPress={() => onTabChange(tab.key)}
               style={[styles.tab, selected && styles.tabActive]}
               activeOpacity={0.85}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              accessibilityLabel={tab.label}
             >
               <Text style={[styles.tabLabel, selected && styles.tabLabelActive]}>{tab.label}</Text>
             </TouchableOpacity>
@@ -131,7 +140,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(20, 24, 32, 0.18)',
+    backgroundColor: 'rgba(20, 24, 32, 0.45)',
     borderRadius: 22,
   },
   heroCopy: {
@@ -157,9 +166,13 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tab: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    flex: 1,
+    minHeight: 44,
+    paddingHorizontal: 8,
+    paddingVertical: 10,
     borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   tabActive: {
     backgroundColor: BRAND,
