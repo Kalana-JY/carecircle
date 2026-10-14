@@ -30,7 +30,7 @@ export default function PersonalInfoScreen() {
   const isDark = useColorScheme() === 'dark';
 
   const colors = {
-    background: isDark ? '#121212' : '#EDF4F9',
+    background: isDark ? '#121212' : '#FFFFFF',
     card: isDark ? '#1E1E1E' : '#FFFFFF',
     text: isDark ? '#ECEDEE' : '#1C2024',
     textSecondary: isDark ? '#9BA1A6' : '#5A6472',

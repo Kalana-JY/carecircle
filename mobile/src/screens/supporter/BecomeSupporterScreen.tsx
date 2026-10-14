@@ -280,13 +280,18 @@ export default function BecomeSupporterScreen() {
       <SafeAreaView style={[styles.safeArea, { backgroundColor: colors.background }]}>
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {/* Header */}
-          <View style={styles.headerRow}>
+          <View style={styles.centeredHeaderRow}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={26} color={colors.text} />
+              <Ionicons name="arrow-back" size={24} color={colors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+            <Text
+              style={[styles.centeredHeaderTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
               Become a Peer Supporter
             </Text>
+            <View style={{ width: 28 }} />
           </View>
 
           {/* Combined Policy & Terms Card Container */}

@@ -229,7 +229,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               <Text
                 style={[styles.menuItemText, { color: colors.text }]}
               >
-                Book a Session
+                Sessions
               </Text>
             </TouchableOpacity>
 
@@ -350,7 +350,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
               size={20}
               color="#E53935"
             />
-            <Text style={styles.footerText}>Sign Out</Text>
+            <Text style={styles.footerText}>Logout</Text>
           </TouchableOpacity>
         </View>
       </View>

@@ -66,17 +66,22 @@ const notifySessionBooked = async (session, memberUser) => {
 const notifySessionUpdated = async (session, supporterUser) => {
   if (!session || !session.userId) return;
   const timeStr = formatSessionTime(session.startTime);
+  const locationInfo = session.sessionType === 'physical'
+    ? `Venue: ${session.venue || 'Physical'}`
+    : 'Online Session';
 
   await createNotificationSafe({
     userId: session.userId,
     type: 'session_updated',
     title: 'Session Updated',
-    body: `Your session "${session.title}" for ${timeStr} has been updated by the supporter.`,
+    body: `Your session "${session.title}" has been updated to ${timeStr} (${locationInfo}). Please review in My Sessions.`,
     dedupeKey: `session_updated:member:${session._id}:${Date.now()}`,
     metadata: {
       sessionId: session._id,
       supporterId: session.supporterId,
       startTime: session.startTime,
+      sessionType: session.sessionType,
+      venue: session.venue,
     },
   });
 };

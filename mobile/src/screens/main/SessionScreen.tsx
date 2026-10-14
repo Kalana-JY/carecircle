@@ -25,7 +25,7 @@ import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
 const CATEGORY_FILTERS = ['All', 'Popular', 'Stress Management', 'Anxiety', 'Depression', 'General Check-in'];
 
-export default function BookSessionScreen() {
+export default function SessionScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';

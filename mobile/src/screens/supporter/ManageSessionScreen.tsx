@@ -26,7 +26,7 @@ import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
 
-export default function ManageScheduleScreen() {
+export default function ManageSessionScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
   const isDark = useColorScheme() === 'dark';
@@ -228,7 +228,19 @@ export default function ManageScheduleScreen() {
 
   const openEditModal = (session: any) => {
     if (session.status === 'booked') {
-      showAlert('Cannot Edit Time', 'This session is already booked. You can modify meeting links or notes, or cancel the session.', 'warning');
+      const now = Date.now();
+      const startMs = new Date(session.startTime).getTime();
+      const diffMs = startMs - now;
+      const twelveHoursMs = 12 * 60 * 60 * 1000;
+
+      if (diffMs < twelveHoursMs) {
+        showAlert(
+          'Cannot Edit Session',
+          'This session is scheduled within 12 hours and cannot be edited. You can cancel the session if needed.',
+          'warning'
+        );
+        return;
+      }
     }
     setEditingSession(session);
     setTitle(session.title);
@@ -265,9 +277,23 @@ export default function ManageScheduleScreen() {
       return;
     }
 
-    if (start < new Date() && !editingSession) {
+    if (start < new Date()) {
       showAlert('Validation Error', 'The session start time must be in the future.', 'warning');
       return;
+    }
+
+    if (editingSession && editingSession.status === 'booked') {
+      const now = Date.now();
+      const currentStartMs = new Date(editingSession.startTime).getTime();
+      const twelveHoursMs = 12 * 60 * 60 * 1000;
+      if (currentStartMs - now < twelveHoursMs) {
+        showAlert(
+          'Cannot Edit Session',
+          'This session is scheduled within 12 hours and cannot be edited. You can cancel the session if needed.',
+          'warning'
+        );
+        return;
+      }
     }
 
     if (end <= start) {

@@ -16,7 +16,7 @@ import {
   Modal,
   TextInput,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/store/AuthContext';
 import { API_URL } from '@/services/api';
@@ -31,9 +31,10 @@ const MONTH_NAMES = [
 
 const DAYS_OF_WEEK = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-export default function BookedSessionsScreen() {
+export default function MySessionScreen() {
   const { user } = useAuth();
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const isDark = useColorScheme() === 'dark';
 
   const colors = {
@@ -102,6 +103,9 @@ export default function BookedSessionsScreen() {
       const data = await response.json();
       if (response.ok && data.items) {
         setBookings(data.items);
+        if (route.params?.selectedSessionId) {
+          setExpandedIds((prev) => new Set(prev).add(route.params.selectedSessionId));
+        }
       }
     } catch (error) {
       console.error('[BookedSessions] Failed to fetch booked sessions:', error);

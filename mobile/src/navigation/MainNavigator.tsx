@@ -21,10 +21,10 @@ import ReminderScreen from '../screens/main/ReminderScreen';
 import NotificationsScreen from '../screens/main/NotificationsScreen';
 import BecomeSupporterScreen from '../screens/supporter/BecomeSupporterScreen';
 import ModalScreen from '../screens/modal/ModalScreen';
-import ManageScheduleScreen from '../screens/supporter/ManageScheduleScreen';
+import ManageSessionScreen from '../screens/supporter/ManageSessionScreen';
 import SupporterFeedbackScreen from '../screens/supporter/SupporterFeedbackScreen';
-import BookSessionScreen from '../screens/main/BookSessionScreen';
-import BookedSessionsScreen from '../screens/main/BookedSessionsScreen';
+import SessionScreen from '../screens/main/SessionScreen';
+import MySessionScreen from '../screens/main/MySessionScreen';
 import PersonalInfoScreen from '../screens/main/PersonalInfoScreen';
 import HelpSupportScreen from '../screens/support/HelpSupportScreen';
 import FAQScreen from '../screens/support/FAQScreen';
@@ -70,13 +70,16 @@ export type MainStackParamList = {
   PrivacyPolicy: undefined;
   TermsOfService: undefined;
   Resources: undefined;
-  BookedSessions: undefined;
+  BookedSessions: { selectedSessionId?: string } | undefined;
+  MySession: { selectedSessionId?: string } | undefined;
   ForumDetail: undefined;
   CreatePost: undefined;
   BecomeSupporter: undefined;
   ManageSchedule: undefined;
+  ManageSession: undefined;
   SupporterFeedback: undefined;
   BookSession: undefined;
+  Session: undefined;
   Conversations: undefined;
   ChatRoom: { conversationId: string; title: string };
   CreateGroup: undefined;
@@ -199,7 +202,12 @@ export default function MainNavigator() {
 
       <Stack.Screen
         name="ManageSchedule"
-        component={ManageScheduleScreen}
+        component={ManageSessionScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="ManageSession"
+        component={ManageSessionScreen}
         options={{ headerShown: false }}
       />
 
@@ -235,13 +243,23 @@ export default function MainNavigator() {
 
       <Stack.Screen
         name="BookSession"
-        component={BookSessionScreen}
+        component={SessionScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="Session"
+        component={SessionScreen}
         options={{ headerShown: false }}
       />
 
       <Stack.Screen
         name="BookedSessions"
-        component={BookedSessionsScreen}
+        component={MySessionScreen}
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen
+        name="MySession"
+        component={MySessionScreen}
         options={{ headerShown: false }}
       />
 
