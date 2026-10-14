@@ -1,8 +1,13 @@
-import React from 'react';
-import { Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Fonts } from '@/constants/theme';
 import { useAuth } from '@/store/AuthContext';
 import heroBanner from '../../assets/images/hero-banner.png';
+import heroBench from '../../assets/images/hero-slide-bench.png';
+import heroMeditate from '../../assets/images/hero-slide-meditate.png';
+
+const HERO_SLIDES = [heroBanner, heroMeditate, heroBench];
+const HERO_INTERVAL_MS = 2000;
 
 const BRAND = '#3A7CA5';
 
@@ -52,6 +57,31 @@ type ChromeProps = {
 
 export function MoodHubChrome({ activeTab, onTabChange, onAvatarPress }: ChromeProps) {
   const { user } = useAuth();
+  const [slide, setSlide] = useState(0);
+  const [previousSlide, setPreviousSlide] = useState(0);
+  const slideRef = useRef(0);
+  const fade = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const current = slideRef.current;
+      const next = (current + 1) % HERO_SLIDES.length;
+      setPreviousSlide(current);
+      slideRef.current = next;
+      setSlide(next);
+      fade.setValue(0);
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, HERO_INTERVAL_MS);
+
+    return () => {
+      clearInterval(timer);
+      fade.stopAnimation();
+    };
+  }, [fade]);
 
   return (
     <View>
@@ -68,13 +98,19 @@ export function MoodHubChrome({ activeTab, onTabChange, onAvatarPress }: ChromeP
         <Text style={styles.brand}>CareCircle</Text>
       </View>
 
-      <ImageBackground source={heroBanner} style={styles.hero} imageStyle={styles.heroImage}>
+      <View style={styles.hero}>
+        <Image source={HERO_SLIDES[previousSlide]} style={styles.heroFill} resizeMode="cover" />
+        <Animated.Image
+          source={HERO_SLIDES[slide]}
+          style={[styles.heroFill, { opacity: fade }]}
+          resizeMode="cover"
+        />
         <View style={styles.heroScrim} />
         <View style={styles.heroCopy}>
           <Text style={styles.heroGreeting}>{greetingForNow(user?.name)}</Text>
           <Text style={styles.heroDate}>{longDateLabel()}</Text>
         </View>
-      </ImageBackground>
+      </View>
 
       <View style={styles.tabs}>
         {TABS.map((tab) => {
@@ -128,11 +164,14 @@ const styles = StyleSheet.create({
   hero: {
     marginHorizontal: 16,
     height: 168,
+    borderRadius: 22,
     justifyContent: 'flex-end',
     overflow: 'hidden',
   },
-  heroImage: {
-    borderRadius: 22,
+  heroFill: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   heroScrim: {
     position: 'absolute',
