@@ -19,7 +19,6 @@ import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SidePanel } from '../../components/SidePanel';
 import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
-import { ProfileAvatar } from '../../components/MoodHubChrome';
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -37,7 +36,7 @@ export default function ProfileScreen() {
 
   // Dynamic Theme Colors matching mockup
   const colors = {
-    background: isDark ? '#121212' : '#EDF4F9',
+    background: isDark ? '#121212' : '#FFFFFF',
     card: isDark ? '#1E1E1E' : '#FFFFFF',
     text: isDark ? '#ECEDEE' : '#1C2024',
     textSecondary: isDark ? '#9BA1A6' : '#687076',
@@ -105,17 +104,21 @@ export default function ProfileScreen() {
         backgroundColor={colors.background}
       />
 
+      {/* Top Header */}
       <View style={[styles.header, { backgroundColor: colors.background }]}>
         <TouchableOpacity
           onPress={() => setIsSidePanelOpen(true)}
-          style={[styles.profileAvatar, { backgroundColor: colors.brandLight }]}
-          accessibilityLabel="Open menu"
+          style={styles.headerBtn}
+          hitSlop={12}
+          accessibilityLabel="Open side menu"
         >
-          <ProfileAvatar name={user?.name} uri={user?.avatarUrl} size={40} />
+          <Ionicons name="menu-outline" size={28} color={colors.text} />
         </TouchableOpacity>
-        <Text style={[styles.brand, { color: colors.brand, fontFamily: Fonts.serif || Fonts.rounded || 'System' }]}>
-          CareCircle
+
+        <Text style={[styles.headerTitle, { color: colors.text, fontFamily: Fonts.rounded || 'System' }]}>
+          Account
         </Text>
+
         <TouchableOpacity
           onPress={() => navigation.navigate('Notifications')}
           style={styles.headerBtn}
@@ -333,17 +336,10 @@ const styles = StyleSheet.create({
   headerBtn: {
     padding: 6,
   },
-  profileAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  brand: {
-    fontSize: 26,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
   },
   scrollContainer: {
     paddingHorizontal: 20,

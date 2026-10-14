@@ -127,9 +127,9 @@ export default function NotificationsScreen() {
       type === 'session_reminder'
     ) {
       if (type === 'session_cancelled' && notification.metadata?.memberId) {
-        navigation.navigate('ManageSchedule');
+        navigation.navigate('ManageSession');
       } else {
-        navigation.navigate('BookedSessions');
+        navigation.navigate('MySession', { selectedSessionId: notification.metadata?.sessionId });
       }
     } else if (type === 'mood_log_reminder') {
       navigation.navigate('Mood');

@@ -180,11 +180,18 @@ const updateSession = async (req, res) => {
 
     const { title, description, startTime, endTime, sessionType, venue, status } = req.body;
 
-    // If booked, restrict updating key schedule attributes
-    if (session.status === 'booked' && (startTime || endTime)) {
-      return res.status(400).json({
-        message: 'Cannot change date/time of a booked session. Please cancel the session or booking first.',
-      });
+    // If booked, enforce 12-hour cutoff rule for modifications
+    if (session.status === 'booked') {
+      const now = new Date();
+      const currentStart = new Date(session.startTime);
+      const diffMs = currentStart.getTime() - now.getTime();
+      const twelveHoursMs = 12 * 60 * 60 * 1000;
+
+      if (diffMs < twelveHoursMs) {
+        return res.status(400).json({
+          message: 'Cannot edit session within 12 hours of the scheduled start time. You may cancel the session if needed.',
+        });
+      }
     }
 
     if (title) session.title = title.trim();
