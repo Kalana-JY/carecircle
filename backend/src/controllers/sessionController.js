@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { isAdminUser } = require('../middleware/authMiddleware');
 const Session = require('../models/Session');
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
 const SessionFeedback = require('../models/SessionFeedback');
@@ -92,8 +93,7 @@ const createSession = async (req, res) => {
 const getSessions = async (req, res) => {
   try {
     const { supporterId, admin } = req.query;
-    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    const isUserAdmin = isAdminUser(req.user);
 
     let query = {};
     if (admin === 'true' && isUserAdmin) {
@@ -264,8 +264,7 @@ const deleteSession = async (req, res) => {
       return res.status(404).json({ message: 'Session not found.' });
     }
 
-    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
+    const isUserAdmin = isAdminUser(req.user);
 
     // Verify ownership
     if (session.supporterId.toString() !== req.user._id.toString() && !isUserAdmin) {

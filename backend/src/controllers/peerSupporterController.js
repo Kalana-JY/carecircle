@@ -1,4 +1,5 @@
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
+const { isAdminUser } = require('../middleware/authMiddleware');
 
 // @desc    Submit application to become a peer supporter
 // @route   POST /api/peer-supporters/apply
@@ -79,9 +80,7 @@ const getApplicationStatus = async (req, res) => {
 // @access  Private (Admin only)
 const getApplications = async (req, res) => {
   try {
-    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
-    if (!isUserAdmin) {
+    if (!isAdminUser(req.user)) {
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 
@@ -102,9 +101,7 @@ const getApplications = async (req, res) => {
 // @access  Private (Admin only)
 const updateApplicationStatus = async (req, res) => {
   try {
-    const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-    const isUserAdmin = req.user && req.user.email.toLowerCase() === adminEmail;
-    if (!isUserAdmin) {
+    if (!isAdminUser(req.user)) {
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 

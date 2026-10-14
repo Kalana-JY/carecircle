@@ -1,41 +1,60 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import { todayStamp } from '@/constants/moods';
 import { tokenStorage } from './storage';
 
 // Set to true if you are testing on a physical phone instead of the emulator
 const IS_PHYSICAL_DEVICE = false;
 
+const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
+
+const isLoopbackHttp = (url: string) => {
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' && LOOPBACK_HOSTS.has(parsed.hostname);
+  } catch {
+    return false;
+  }
+};
+
 /**
- * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000
- * - Android Emulator: http://10.0.2.2:5000
- * - iOS Simulator: http://localhost:5000
- * - Physical Device: Expo hostUri IP address
+ * Development keeps the local HTTP addresses. A production build uses
+ * EXPO_PUBLIC_API_URL and accepts it only when it is HTTPS, or HTTP on
+ * localhost / the Android emulator loopback.
  */
-const getBaseUrl = (): string => {
+const productionUrl = (url: string) => {
+  const trimmed = url.replace(/\/$/, '');
+  if (__DEV__ || trimmed.startsWith('https://') || isLoopbackHttp(trimmed)) return trimmed;
+  console.error('Production API requests must use HTTPS. Set EXPO_PUBLIC_API_URL to an https:// address.');
+  return '';
+};
+
+const localBaseUrl = (): string => {
   if (Platform.OS === 'web') {
     return 'http://localhost:5000';
   }
 
-  // Prioritize emulator loopback for Android
   if (Platform.OS === 'android' && !IS_PHYSICAL_DEVICE) {
     return 'http://10.0.2.2:5000';
   }
 
-  // Use Metro bundler IP address for physical devices
   const hostUri = Constants.expoConfig?.hostUri;
-
   if (hostUri) {
     const ip = hostUri.split(':')[0];
-
-    if (ip) {
-      return `http://${ip}:5000`;
-    }
+    if (ip) return `http://${ip}:5000`;
   }
 
-  return Platform.OS === 'android'
-    ? 'http://10.0.2.2:5000'
-    : 'http://localhost:5000';
+  return Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
+};
+
+const getBaseUrl = (): string => {
+  const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
+  if (configured) return productionUrl(configured);
+  if (!__DEV__) {
+    console.error('Set EXPO_PUBLIC_API_URL to an https:// address before shipping a production build.');
+    return '';
+  }
+  return localBaseUrl();
 };
 
 export const API_URL = getBaseUrl();
@@ -67,6 +86,10 @@ export async function apiFetch<T = any>(
   path: string,
   options: ApiFetchOptions = {}
 ): Promise<T> {
+  if (!API_URL) {
+    throw new Error('The app is not configured with a secure API address.');
+  }
+
   const session = await tokenStorage.getItem('user_session');
 
   let token: string | null = null;
@@ -124,6 +147,7 @@ export interface MoodEntry {
   tags?: string[];
   createdAt?: string;
   updatedAt?: string;
+  updatedExisting?: boolean;
 }
 
 export interface JournalEntry {
@@ -200,6 +224,18 @@ export interface WellnessActivity {
   logs: {
     date: string;
     minutes: number;
+  }[];
+}
+
+export interface ActivityWeekSummary {
+  weekStart: string;
+  weekEnd: string;
+  loggedDays: number;
+  targetDays: number;
+  items: {
+    title: string;
+    loggedDays: number;
+    targetPerWeek: number;
   }[];
 }
 
@@ -319,6 +355,11 @@ export const wellnessActivityApi = {
         },
       }
     ),
+
+  summary: (today = todayStamp()) =>
+    apiFetch<ActivityWeekSummary>(
+      `/api/wellness-activities/summary?today=${encodeURIComponent(today)}`
+    ),
 };
 
 const getAuthHeaders = async (): Promise<
@@ -348,6 +389,10 @@ const getAuthHeaders = async (): Promise<
 export async function apiFetchText(
   path: string
 ): Promise<string> {
+  if (!API_URL) {
+    throw new Error('The app is not configured with a secure API address.');
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     headers: await getAuthHeaders(),
   });
@@ -365,6 +410,10 @@ export async function apiFetchText(
 export async function apiFetchBytes(
   path: string
 ): Promise<Uint8Array> {
+  if (!API_URL) {
+    throw new Error('The app is not configured with a secure API address.');
+  }
+
   const response = await fetch(`${API_URL}${path}`, {
     headers: await getAuthHeaders(),
   });
@@ -820,6 +869,10 @@ export interface MoodWeeklyTrends {
   lastWeek: MoodWeekBucket | null;
   weekOverWeek: MoodComparison | null;
   trend: MoodTrendDirection;
+  recordingStreak?: {
+    length: number;
+    includesToday: boolean;
+  };
 }
 
 export interface MoodMonthlyTrends {
@@ -887,13 +940,12 @@ const rangeQuery = (range?: {
   end?: string;
 }) => {
   const params = new URLSearchParams();
+  params.set('today', todayStamp());
 
   if (range?.start) params.set('start', range.start);
   if (range?.end) params.set('end', range.end);
 
-  const query = params.toString();
-
-  return query ? `?${query}` : '';
+  return `?${params.toString()}`;
 };
 
 export const moodInsightsApi = {
@@ -905,6 +957,7 @@ export const moodInsightsApi = {
     mood?: string;
   }) => {
     const params = new URLSearchParams();
+    params.set('today', todayStamp());
 
     if (options?.start) params.set('start', options.start);
     if (options?.end) params.set('end', options.end);
@@ -914,21 +967,19 @@ export const moodInsightsApi = {
       params.set('limit', String(options.limit));
     if (options?.mood) params.set('mood', options.mood);
 
-    const query = params.toString();
-
     return apiFetch<MoodHistoryResponse>(
-      `/api/moods/history${query ? `?${query}` : ''}`
+      `/api/moods/history?${params.toString()}`
     );
   },
 
   weekly: (weeks = 4) =>
     apiFetch<MoodWeeklyTrends>(
-      `/api/moods/trends/weekly?weeks=${weeks}`
+      `/api/moods/trends/weekly?weeks=${weeks}&today=${encodeURIComponent(todayStamp())}`
     ),
 
   monthly: (months = 6) =>
     apiFetch<MoodMonthlyTrends>(
-      `/api/moods/trends/monthly?months=${months}`
+      `/api/moods/trends/monthly?months=${months}&today=${encodeURIComponent(todayStamp())}`
     ),
 
   patterns: (range?: {
@@ -941,7 +992,7 @@ export const moodInsightsApi = {
 
   compare: (period: 'week' | 'month' = 'week') =>
     apiFetch<MoodProgressComparison>(
-      `/api/moods/compare?period=${period}`
+      `/api/moods/compare?period=${period}&today=${encodeURIComponent(todayStamp())}`
     ),
 };
 
@@ -993,7 +1044,7 @@ const exportQuery = (
   format: 'csv' | 'pdf',
   range?: { start?: string; end?: string }
 ) => {
-  const params = new URLSearchParams({ format });
+  const params = new URLSearchParams({ format, today: todayStamp() });
 
   if (range?.start) params.set('start', range.start);
   if (range?.end) params.set('end', range.end);
@@ -1034,7 +1085,7 @@ export const moodReportApi = {
       '/api/moods/reports/share',
       {
         method: 'POST',
-        body,
+        body: { today: todayStamp(), ...body },
       }
     ),
 

@@ -1,6 +1,13 @@
-// Mood labels are free text, so trends are driven by a 1-5 positivity scale.
+// Mood labels map onto a 1-5 positivity scale.
+// The app's five moods are listed first. Older free-text labels stay so
+// historical records keep the scores they were given.
 // Unknown labels fall back to the entry intensity, then to neutral.
 const MOOD_SCALE = {
+  radiant: 5,
+  steady: 4,
+  cloudy: 3,
+  heavy: 2,
+  stormy: 1,
   ecstatic: 5,
   excited: 5,
   great: 5,

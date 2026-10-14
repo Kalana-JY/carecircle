@@ -1,14 +1,12 @@
 const User = require('../models/User');
+const { isAdminUser } = require('../middleware/authMiddleware');
 const Session = require('../models/Session');
 const PeerSupporterApplication = require('../models/PeerSupporterApplication');
 const Mood = require('../models/Mood');
 const ForumPost = require('../models/ForumPost');
 
 // Middleware helper to verify admin
-const verifyAdmin = (req) => {
-  const adminEmail = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
-  return req.user && req.user.email && req.user.email.toLowerCase() === adminEmail;
-};
+const verifyAdmin = (req) => isAdminUser(req.user);
 
 // @desc    Get Admin Dashboard Stats
 // @route   GET /api/admin/stats

@@ -27,6 +27,7 @@ import { MoodComparePanel } from '../mood/MoodComparePanel';
 import { MoodReportPanel } from '../mood/MoodReportPanel';
 import { RemindersPanel } from '../mood/RemindersPanel';
 import { WellbeingPanel } from '../mood/WellbeingPanel';
+import { MoodProgressDashboard } from '../mood/MoodProgressDashboard';
 
 const weekStartStamp = () => {
   const date = new Date();
@@ -51,6 +52,8 @@ export default function MoodHubScreen() {
   const [hubTab, setHubTab] = useState<HubTab>(route.params?.hubTab || 'moods');
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [savedNotice, setSavedNotice] = useState<string | null>(null);
 
   const [moodEntries, setMoodEntries] = useState<MoodEntry[]>([]);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>([]);
@@ -85,6 +88,8 @@ export default function MoodHubScreen() {
       setActivities(wellnessResponse.items);
     } catch (loadError: any) {
       setError(loadError.message || 'Unable to load your wellness data.');
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -131,13 +136,24 @@ export default function MoodHubScreen() {
   };
 
   const saveMood = async () => {
+    if (notes.length > 4000) {
+      setError('Notes need to stay under 4000 characters.');
+      setSavedNotice(null);
+      return;
+    }
     try {
       setSaving(true);
       setError(null);
-      await moodApi.create({ date: todayStamp(), mood: selectedMood, intensity: 5, notes });
+      const saved = await moodApi.create({ date: todayStamp(), mood: selectedMood, notes });
       setNotes('');
+      setSavedNotice(
+        saved.updatedExisting
+          ? `Updated. Today is saved as ${selectedMood}.`
+          : `Saved. Today is recorded as ${selectedMood}.`
+      );
       await loadAll();
     } catch (saveError: any) {
+      setSavedNotice(null);
       setError(saveError.message || 'Unable to save today\'s entry.');
     } finally {
       setSaving(false);
@@ -320,9 +336,6 @@ export default function MoodHubScreen() {
       .slice(0, 3);
   }, [journalEntries, moodEntries]);
 
-  const weeklyActivityLogs = activities.reduce((sum, activity) => sum + progressFor(activity), 0);
-  const weeklyActivityTarget = activities.reduce((sum, activity) => sum + (activity.targetPerWeek || 0), 0);
-
   const categoryStyle = (category: string) => {
     const value = category.toLowerCase();
     if (value.includes('sleep')) return { tint: '#E8A0A0', icon: 'moon-outline' as const };
@@ -338,7 +351,18 @@ export default function MoodHubScreen() {
         showsVerticalScrollIndicator={false}
       >
         <MoodHubChrome activeTab={hubTab} onTabChange={setHubTab} onAvatarPress={() => navigation.navigate('Profile')} />
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {loading ? <Text style={styles.loadingNote}>Loading your mood data...</Text> : null}
+        {error ? (
+          <View style={styles.noticeError}>
+            <Text style={styles.error} accessibilityRole="alert">{error}</Text>
+            <TouchableOpacity onPress={loadAll} accessibilityRole="button" accessibilityLabel="Try loading again" style={styles.retryButton}>
+              <Text style={styles.link}>Try again</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+        {savedNotice ? (
+          <Text style={styles.success} accessibilityLiveRegion="polite">{savedNotice}</Text>
+        ) : null}
 
         {hubTab === 'moods' && (
           <View style={styles.section}>
@@ -348,11 +372,21 @@ export default function MoodHubScreen() {
                 {MOODS.map((mood) => {
                   const selected = selectedMood === mood.label;
                   return (
-                    <TouchableOpacity key={mood.label} onPress={() => setSelectedMood(mood.label)} style={styles.moodItem} activeOpacity={0.85}>
+                    <TouchableOpacity
+                      key={mood.label}
+                      onPress={() => setSelectedMood(mood.label)}
+                      style={styles.moodItem}
+                      activeOpacity={0.85}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`${mood.label} mood, score ${mood.score} out of 5${selected ? ', selected' : ''}`}
+                    >
                       <View style={[styles.moodCircle, selected && styles.moodCircleSelected]}>
                         <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                        {selected ? <View style={styles.selectedMark}><Ionicons name="checkmark" size={12} color="#FFFFFF" /></View> : null}
                       </View>
                       <Text style={[styles.moodLabel, selected && styles.moodLabelSelected]}>{mood.label}</Text>
+                      <Text style={styles.moodScore}>Score {mood.score}</Text>
                     </TouchableOpacity>
                   );
                 })}
@@ -362,15 +396,25 @@ export default function MoodHubScreen() {
                   value={notes}
                   onChangeText={setNotes}
                   placeholder="Add a few lines about today (optional)..."
-                  placeholderTextColor="#8B949E"
+                  placeholderTextColor="#5E6770"
                   multiline
                   style={styles.notesInput}
+                  accessibilityLabel="Optional note about today"
+                  maxLength={4000}
                 />
-                <Pressable onPress={startVoice} style={styles.micButton}>
+                <Pressable onPress={startVoice} style={styles.micButton} accessibilityRole="button" accessibilityLabel={listening ? 'Listening for a voice note' : 'Add a voice note'}>
                   <Ionicons name={listening ? 'mic' : 'mic-outline'} size={18} color={BRAND} />
                 </Pressable>
               </View>
-              <TouchableOpacity onPress={saveMood} disabled={saving} style={styles.primaryButton} activeOpacity={0.85}>
+              <TouchableOpacity
+                onPress={saveMood}
+                disabled={saving}
+                style={styles.primaryButton}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: saving, busy: saving }}
+                accessibilityLabel="Save today's mood"
+              >
                 <Text style={styles.primaryText}>{saving ? 'Saving...' : "Save today's entry"}</Text>
               </TouchableOpacity>
             </View>
@@ -497,21 +541,6 @@ export default function MoodHubScreen() {
 
         {hubTab === 'progress' && (
           <View>
-            <View style={styles.section}>
-              <View style={styles.card}>
-                <Text style={styles.cardTitle}>Wellbeing activities</Text>
-                <Text style={styles.progressStat}>
-                  {weeklyActivityLogs} / {weeklyActivityTarget || 0} logs
-                </Text>
-                <View style={styles.progressTrack}>
-                  <View style={[styles.progressFill, { width: `${weeklyActivityTarget ? Math.min(100, (weeklyActivityLogs / weeklyActivityTarget) * 100) : 0}%` }]} />
-                </View>
-                <TouchableOpacity onPress={() => setHubTab('journal')}>
-                  <Text style={styles.viewAll}>Open activities</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -525,6 +554,9 @@ export default function MoodHubScreen() {
                     onPress={() => setInsightTab(tab.key)}
                     style={[styles.insightTab, selected && styles.insightTabActive]}
                     activeOpacity={0.85}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={tab.label}
                   >
                     <Text style={[styles.insightTabLabel, selected && styles.insightTabLabelActive]}>{tab.label}</Text>
                   </TouchableOpacity>
@@ -532,7 +564,12 @@ export default function MoodHubScreen() {
               })}
             </ScrollView>
 
-            {insightTab === 'foryou' && <WellbeingPanel onActivityAdded={loadAll} />}
+            {insightTab === 'foryou' && (
+              <>
+                <MoodProgressDashboard />
+                <WellbeingPanel onActivityAdded={loadAll} />
+              </>
+            )}
             {insightTab === 'history' && <MoodHistoryPanel />}
             {insightTab === 'trends' && <MoodTrendsPanel />}
             {insightTab === 'patterns' && <MoodPatternsPanel />}
@@ -582,11 +619,22 @@ export default function MoodHubScreen() {
           <View style={styles.modalCard}>
             <Text style={styles.cardTitle}>{showComposer || editingEntry?.id === 'new' ? 'New journal entry' : 'Edit entry'}</Text>
             <View style={styles.moodRow}>
-              {MOODS.map((mood) => (
-                <TouchableOpacity key={mood.label} onPress={() => editingEntry && setEditingEntry({ ...editingEntry, mood: mood.label })}>
-                  <Text style={{ fontSize: 22, opacity: editingEntry?.mood === mood.label ? 1 : 0.4 }}>{mood.emoji}</Text>
-                </TouchableOpacity>
-              ))}
+              {MOODS.map((mood) => {
+                const selected = editingEntry?.mood === mood.label;
+                return (
+                  <TouchableOpacity
+                    key={mood.label}
+                    onPress={() => editingEntry && setEditingEntry({ ...editingEntry, mood: mood.label })}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                    accessibilityLabel={`${mood.label}${selected ? ', selected' : ''}`}
+                    style={styles.moodItem}
+                  >
+                    <Text style={[styles.moodEmoji, selected && styles.moodLabelSelected]}>{mood.emoji}</Text>
+                    <Text style={[styles.moodLabel, selected && styles.moodLabelSelected]}>{mood.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
             <TextInput
               value={editingEntry?.text || ''}
@@ -623,8 +671,8 @@ const styles = StyleSheet.create({
     borderColor: '#E7ECF1',
   },
   cardTitle: { fontSize: 18, fontWeight: '800', color: '#1C242C', marginBottom: 14 },
-  moodRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
-  moodItem: { alignItems: 'center', width: '18%' },
+  moodRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 14, gap: 8 },
+  moodItem: { alignItems: 'center', width: 64, minHeight: 96 },
   moodCircle: {
     width: 52,
     height: 52,
@@ -632,15 +680,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F3F6F8',
+    borderWidth: 2,
+    borderColor: '#D5DDE4',
   },
   moodCircleSelected: {
-    borderWidth: 2,
     borderColor: BRAND,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#E7F2FA',
+  },
+  selectedMark: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: BRAND,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   moodEmoji: { fontSize: 24 },
-  moodLabel: { fontSize: 11, color: '#6B7380', marginTop: 6, fontWeight: '600' },
-  moodLabelSelected: { color: BRAND, fontWeight: '800' },
+  moodLabel: { fontSize: 12, color: '#41474F', marginTop: 6, fontWeight: '700', textAlign: 'center' },
+  moodLabelSelected: { color: '#044A77', fontWeight: '800' },
+  moodScore: { fontSize: 11, color: '#41474F', marginTop: 2, fontWeight: '600' },
   notesWrap: { position: 'relative', marginBottom: 12 },
   notesInput: {
     minHeight: 78,
@@ -651,8 +712,8 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
     color: '#1C242C',
   },
-  micButton: { position: 'absolute', right: 10, bottom: 10, padding: 4 },
-  primaryButton: { backgroundColor: BRAND, borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
+  micButton: { position: 'absolute', right: 6, bottom: 6, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  primaryButton: { backgroundColor: BRAND, borderRadius: 12, minHeight: 48, paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   primaryText: { color: '#FFFFFF', fontWeight: '800' },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: '#1C242C', marginBottom: 10 },
@@ -690,7 +751,11 @@ const styles = StyleSheet.create({
   journalBody: { color: '#3F4750', fontSize: 14, lineHeight: 20 },
   viewAll: { color: BRAND, fontWeight: '800', textAlign: 'center', marginTop: 4 },
   empty: { color: '#7A828C', textAlign: 'center', paddingVertical: 12 },
-  error: { color: '#BA1A1A', paddingHorizontal: 20, marginTop: 8 },
+  error: { color: '#93000A', paddingHorizontal: 20, marginTop: 8, fontSize: 14, lineHeight: 20 },
+  success: { color: '#145C32', backgroundColor: '#E7F6EC', marginHorizontal: 16, marginTop: 8, padding: 12, borderRadius: 12, fontWeight: '700', lineHeight: 20 },
+  loadingNote: { color: '#41474F', paddingHorizontal: 20, marginTop: 8 },
+  noticeError: { marginBottom: 4 },
+  retryButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 20 },
   activityCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
@@ -731,7 +796,7 @@ const styles = StyleSheet.create({
   todayDone: { color: '#8B949E', textDecorationLine: 'line-through' },
   progressStat: { fontSize: 22, fontWeight: '800', color: '#1C242C', marginBottom: 10 },
   insightTabs: { paddingHorizontal: 16, gap: 8, paddingBottom: 4 },
-  insightTab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#EEF3F7' },
+  insightTab: { minHeight: 44, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, backgroundColor: '#EEF3F7', justifyContent: 'center' },
   insightTabActive: { backgroundColor: BRAND },
   insightTabLabel: { fontSize: 13, fontWeight: '700', color: '#5B6570' },
   insightTabLabelActive: { color: '#FFFFFF' },

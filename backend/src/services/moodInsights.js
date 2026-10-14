@@ -92,11 +92,14 @@ const enumerateDays = (startKey, endKey) => {
 };
 
 const moodScore = (entry) => {
-  const label = String(entry.mood || '').trim().toLowerCase();
+  const label = String(entry?.mood || '').trim().toLowerCase();
   const mapped = MOOD_SCALE[label];
   if (typeof mapped === 'number') return mapped;
-  if (typeof entry.intensity === 'number' && Number.isFinite(entry.intensity)) {
-    return Math.min(MOOD_SCORE_MAX, Math.max(MOOD_SCORE_MIN, Math.round(entry.intensity / 2)));
+
+  const intensity = Number(entry?.intensity);
+  // Intensity is stored on a 1-10 scale. Only a real number in that range is used.
+  if (Number.isFinite(intensity) && intensity >= 1 && intensity <= 10) {
+    return Math.min(MOOD_SCORE_MAX, Math.max(MOOD_SCORE_MIN, Math.round(intensity / 2)));
   }
   return MOOD_SCORE_NEUTRAL;
 };
@@ -343,13 +346,17 @@ const buildInsights = ({ summary, activities, tags, byDayOfWeek, trend }) => {
 
   const lifted = activities.filter((item) => item.impact > 0);
   if (lifted.length) {
-    insights.push(`"${lifted[0].value}" lines up with your best moods, lifting your score by ${lifted[0].impact} on average.`);
+    insights.push(
+      `"${lifted[0].value}" appears on higher-mood days (${lifted[0].averageScore} on average). This is a pattern in your records, not proof that the activity changed your mood.`
+    );
   }
 
   const drained = activities.filter((item) => item.impact < 0);
   if (drained.length) {
     const worst = drained[drained.length - 1];
-    insights.push(`"${worst.value}" tends to accompany lower moods, pulling your score down by ${Math.abs(worst.impact)}.`);
+    insights.push(
+      `"${worst.value}" appears on lower-mood days (${worst.averageScore} on average). Logging it does not mean it caused the lower mood.`
+    );
   }
 
   const topTag = tags.find((item) => item.impact < 0);
@@ -409,6 +416,26 @@ const analysePatterns = (entries) => {
   };
 };
 
+// Consecutive days with a saved mood, counting back from today.
+// If today is not logged yet, yesterday can still continue the streak.
+const recordingStreak = (entries, todayKey) => {
+  const loggedDays = new Set(entries.map((entry) => entry.dateKey).filter(Boolean));
+  const includesToday = loggedDays.has(todayKey);
+  let cursor = includesToday ? todayKey : addDaysKey(todayKey, -1);
+
+  if (!loggedDays.has(cursor)) {
+    return { length: 0, includesToday };
+  }
+
+  let length = 0;
+  while (loggedDays.has(cursor)) {
+    length += 1;
+    cursor = addDaysKey(cursor, -1);
+  }
+
+  return { length, includesToday };
+};
+
 const compareSummaries = (currentSummary, previousSummary) => {
   const scoreDelta = round2(currentSummary.averageScore - previousSummary.averageScore);
   const entryDelta = currentSummary.entryCount - previousSummary.entryCount;
@@ -464,6 +491,7 @@ module.exports = {
   correlate,
   dayOfWeekBreakdown,
   analysePatterns,
+  recordingStreak,
   compareSummaries,
   buildInsights,
 };
