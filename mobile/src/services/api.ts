@@ -2,17 +2,18 @@ import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { tokenStorage } from './storage';
 
-// Set to true if you are testing on a physical phone instead of the emulator
-const IS_PHYSICAL_DEVICE = false;
+// PRODUCTION BACKEND URL Railway
+export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-fb7f.up.railway.app';
 
-/**
- * Resolves the backend base URL dynamically depending on the current platform and environment.
- * - Web: http://localhost:5000
- * - Android Emulator: http://10.0.2.2:5000
- * - iOS Simulator: http://localhost:5000
- * - Physical Device: Expo hostUri IP address
- */
+const IS_PHYSICAL_DEVICE = true;
+
+
 const getBaseUrl = (): string => {
+  // Use Railway URL
+  if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
+    return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, ''); // Remove trailing slash if present
+  }
+
   if (Platform.OS === 'web') {
     return 'http://localhost:5000';
   }
