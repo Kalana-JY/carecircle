@@ -9,12 +9,6 @@ export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-fb7
 const IS_PHYSICAL_DEVICE = true;
 
 
-const getBaseUrl = (): string => {
-  // Use Railway URL
-  if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
-    return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, ''); // Remove trailing slash if present
-  }
-
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
 const isLoopbackHttp = (url: string) => {
@@ -57,6 +51,10 @@ const localBaseUrl = (): string => {
 };
 
 const getBaseUrl = (): string => {
+  // Use Railway URL if configured
+  if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
+    return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, '');
+  }
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (configured) return productionUrl(configured);
   if (!__DEV__) {
