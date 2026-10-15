@@ -5,14 +5,29 @@ if (typeof global.crypto === 'undefined') global.crypto = nodeCrypto;
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
-const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const connectDB = async () => {
   try {
-    let mongoUri = process.env.MONGO_URI;
+    let mongoUri =
+      process.env.MONGO_URI ||
+      process.env.MONGO_URL ||
+      process.env.MONGODB_URI;
 
     if (!mongoUri) {
+      // Check if running in a cloud/production environment like Railway
+      const isCloudEnv =
+        Boolean(process.env.RAILWAY_ENVIRONMENT) ||
+        Boolean(process.env.RAILWAY_STATIC_URL) ||
+        process.env.NODE_ENV === 'production';
+
+      if (isCloudEnv) {
+        throw new Error(
+          'Missing MONGO_URI (or MONGO_URL) in production environment variables. Please add MONGO_URI in Railway Dashboard.'
+        );
+      }
+
       console.log('No MONGO_URI found — starting local MongoDB for dev');
+      const { MongoMemoryServer } = require('mongodb-memory-server');
       const dbPath = path.join(__dirname, '../../.data/mongo');
       fs.mkdirSync(dbPath, { recursive: true });
       const mongod = await MongoMemoryServer.create({
@@ -28,7 +43,9 @@ const connectDB = async () => {
     }
 
     await mongoose.connect(mongoUri, { ignoreUndefined: true });
-    console.log('MongoDB connected');
+    console.log('MongoDB connected successfully');
+    global.__lastDbError = null;
+
     const { seedSupportLibrary } = require('../services/seedSupportLibrary');
     await seedSupportLibrary();
 
@@ -48,8 +65,18 @@ const connectDB = async () => {
       }
     }
   } catch (error) {
-    console.error('Error connecting to MongoDB:', error);
-    process.exit(1);
+    console.error('Error connecting to MongoDB:', error.message || error);
+    global.__lastDbError = error.message || String(error);
+
+    // In local development exit, but on Railway/Cloud keep server up so it doesn't 502
+    const isCloudEnv =
+      Boolean(process.env.RAILWAY_ENVIRONMENT) ||
+      Boolean(process.env.RAILWAY_STATIC_URL) ||
+      process.env.NODE_ENV === 'production';
+
+    if (!isCloudEnv) {
+      process.exit(1);
+    }
   }
 };
 

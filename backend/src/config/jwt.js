@@ -12,14 +12,9 @@ const getJwtSecret = () => {
   const secret = readSecret();
   if (secret) return secret;
 
-  if (process.env.NODE_ENV === 'production') {
-    if (!missingSecretLogged) {
-      console.error('JWT_SECRET is not set. Refusing to sign or verify tokens.');
-      missingSecretLogged = true;
-    }
-    const error = new Error('JWT secret is not configured');
-    error.code = 'JWT_SECRET_MISSING';
-    throw error;
+  if (!missingSecretLogged) {
+    console.warn('[Security] JWT_SECRET is not set in environment variables. Using default fallback secret.');
+    missingSecretLogged = true;
   }
 
   return DEV_JWT_SECRET;

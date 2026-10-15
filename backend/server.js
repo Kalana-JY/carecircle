@@ -14,6 +14,7 @@ const cors = require("cors");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
 const { getJwtSecret } = require("./src/config/jwt");
+const mongoose = require("mongoose");
 const connectDB = require("./src/config/db");
 const User = require("./src/models/User");
 const Message = require("./src/models/Message");
@@ -54,6 +55,37 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Root & Health check endpoints for Railway / cloud monitoring
+app.get('/', (_req, res) => {
+  res.json({
+    name: 'CareCircle API',
+    status: 'online',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
+    lastDbError: global.__lastDbError || null,
+  });
+});
+
+app.get('/api/health', (_req, res) => {
+  const isConnected = mongoose.connection.readyState === 1;
+  res.status(isConnected ? 200 : 503).json({
+    status: isConnected ? 'healthy' : 'database_disconnected',
+    database: isConnected ? 'connected' : 'disconnected',
+    lastDbError: global.__lastDbError || null,
+  });
+});
+
+// Guard API routes if database is not yet connected
+app.use('/api', (req, res, next) => {
+  if (req.path === '/health' || req.path === '/ping-crisis') return next();
+  if (mongoose.connection.readyState !== 1) {
+    return res.status(503).json({
+      message: 'Database is currently connecting or unavailable. Please check MONGO_URI in Railway.',
+      error: global.__lastDbError || 'Database disconnected',
+    });
+  }
+  next();
+});
 
 // Express 5 leaves req.url empty when the request path equals the mount path
 const mount = (path, router) => {
