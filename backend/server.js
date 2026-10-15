@@ -1,3 +1,12 @@
+// Polyfill global crypto for Node environments where it is not yet on global/globalThis
+const crypto = require("crypto");
+if (typeof globalThis.crypto === "undefined") {
+  globalThis.crypto = crypto;
+}
+if (typeof global.crypto === "undefined") {
+  global.crypto = crypto;
+}
+
 require("dotenv").config();
 const express = require("express");
 const http = require("http");
