@@ -12,10 +12,14 @@ const {
   cancelSession,
   submitSessionFeedback,
   getSupporterFeedback,
+  exportSessionReportPdf,
 } = require('../controllers/sessionController');
 
 // All routes require authentication
 router.use(protect);
+
+// Report Export
+router.get('/export-pdf', exportSessionReportPdf);
 
 // Schedule & Bookings specific views
 router.get('/my-schedule', getMySchedule);

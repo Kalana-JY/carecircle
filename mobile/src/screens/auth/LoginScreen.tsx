@@ -198,11 +198,34 @@ export default function LoginScreen() {
               <Text style={[styles.footerLink, { color: colors.primary, fontFamily: Fonts.rounded || 'System' }]}>Sign up</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Onboarding Tour Link */}
+          <View style={{ alignItems: 'center', marginTop: 18 }}>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('Onboarding')}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 6,
+                paddingVertical: 8,
+                paddingHorizontal: 16,
+                backgroundColor: colors.inputBg,
+                borderRadius: 20,
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="sparkles" size={15} color={colors.primary} />
+              <Text style={{ fontSize: 13, fontWeight: '600', color: colors.primary }}>
+                View App Features & Tour
+              </Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
 
 const styles = StyleSheet.create({
   safeArea: {

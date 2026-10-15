@@ -23,6 +23,7 @@ import { API_URL } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
+import { SessionReportDownloadModal } from '@/components/SessionReportDownloadModal';
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -58,6 +59,7 @@ export default function MySessionScreen() {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sessionToCancel, setSessionToCancel] = useState<string | null>(null);
   const [cancellingLoading, setCancellingLoading] = useState<boolean>(false);
+  const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
   const [alertConfig, setAlertConfig] = useState<{
     title: string;
     message: string;
@@ -368,7 +370,7 @@ export default function MySessionScreen() {
             <View style={styles.detailRow}>
               <Ionicons name="people-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
               <Text style={[styles.detailText, { color: colors.text }]}>
-                {item.sessionType === 'physical' ? '8/15' : '1 on 1 Session'}
+                {item.sessionType === 'physical' ? '1 on 1 In-Person' : '1 on 1 Online'}
               </Text>
             </View>
 
@@ -378,10 +380,7 @@ export default function MySessionScreen() {
                 <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={[styles.detailIcon, { marginTop: 2 }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.detailText, { color: colors.text }]}>
-                    Physical • Venue: {item.venue || 'Community Center'}
-                  </Text>
-                  <Text style={[styles.detailSubText, { color: colors.textSecondary }]}>
-                    123 Main St, Suite 400
+                    Physical • Venue: {item.venue || 'To be confirmed'}
                   </Text>
                 </View>
               </View>
@@ -514,6 +513,23 @@ export default function MySessionScreen() {
             <Text style={styles.segmentTabText}>History</Text>
           </TouchableOpacity>
         </View>
+
+        {/* History Toolbar with Export PDF */}
+        {activeTab === 'history' && (
+          <View style={styles.historyToolbar}>
+            <Text style={[styles.historyToolbarTitle, { color: colors.textSecondary }]}>
+              Past Sessions ({historyBookings.length})
+            </Text>
+            <TouchableOpacity
+              style={[styles.exportPdfBtn, { backgroundColor: colors.brandLight, borderColor: colors.brand }]}
+              onPress={() => setShowDownloadModal(true)}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="document-text-outline" size={15} color={colors.brand} style={{ marginRight: 6 }} />
+              <Text style={[styles.exportPdfBtnText, { color: colors.brand }]}>Export PDF</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* Sessions List */}
         {loading && !refreshing ? (
@@ -735,6 +751,13 @@ export default function MySessionScreen() {
           if (cb) cb();
         }}
       />
+
+      {/* Session PDF Export Modal */}
+      <SessionReportDownloadModal
+        visible={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        role="member"
+      />
     </SafeAreaView>
   );
 }
@@ -767,7 +790,30 @@ const styles = StyleSheet.create({
   segmentContainer: {
     flexDirection: 'row',
     height: 44,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  historyToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+    paddingHorizontal: 2,
+  },
+  historyToolbarTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  exportPdfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  exportPdfBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   segmentTab: {
     flex: 1,

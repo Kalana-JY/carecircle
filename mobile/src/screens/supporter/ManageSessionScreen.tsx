@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { apiFetch } from '@/services/api';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ConfirmationBottomSheet } from '@/components/ConfirmationBottomSheet';
+import { SessionReportDownloadModal } from '@/components/SessionReportDownloadModal';
 
 export default function ManageSessionScreen() {
   const { user } = useAuth();
@@ -40,16 +41,20 @@ export default function ManageSessionScreen() {
     inputBg: isDark ? '#1E293B' : '#F1F5F9',
     brand: '#2563EB',
     brandLight: isDark ? '#1E3A8A40' : '#EFF6FF',
+    tabInactive: isDark ? '#1E293B' : '#E2E8F0',
+    tabInactiveText: isDark ? '#94A3B8' : '#64748B',
     accentRed: '#DC2626',
     fabBg: '#2563EB',
     divider: isDark ? '#334155' : '#E2E8F0',
   };
 
+  const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
   const [sessions, setSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
 
   const [modalVisible, setModalVisible] = useState<boolean>(false);
   const [editingSession, setEditingSession] = useState<any | null>(null);
@@ -390,27 +395,82 @@ export default function ManageSessionScreen() {
     });
   };
 
-  const filteredSessions = sessions.filter((s) => {
-    if (!searchQuery.trim()) return true;
+  const { activeSessions, pastSessions } = useMemo(() => {
+    const active: any[] = [];
+    const past: any[] = [];
+    const now = Date.now();
+
+    sessions.forEach((s) => {
+      const endMs = new Date(s.endTime).getTime();
+      const isPastOrExpired = endMs < now || s.status === 'completed' || s.status === 'cancelled';
+
+      if (isPastOrExpired) {
+        past.push(s);
+      } else {
+        active.push(s);
+      }
+    });
+
+    // Upcoming sessions: soonest first
+    active.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    // Past log: most recent first
+    past.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
+
+    return { activeSessions: active, pastSessions: past };
+  }, [sessions]);
+
+  const currentTabSessions = activeTab === 'active' ? activeSessions : pastSessions;
+
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return currentTabSessions;
     const q = searchQuery.toLowerCase();
-    return (
+    return currentTabSessions.filter((s) =>
       (s.title && s.title.toLowerCase().includes(q)) ||
       (s.description && s.description.toLowerCase().includes(q)) ||
       (s.venue && s.venue.toLowerCase().includes(q)) ||
-      (s.sessionType && s.sessionType.toLowerCase().includes(q))
+      (s.sessionType && s.sessionType.toLowerCase().includes(q)) ||
+      (s.userId?.name && s.userId.name.toLowerCase().includes(q)) ||
+      (s.userId?.email && s.userId.email.toLowerCase().includes(q)) ||
+      (s.status && s.status.toLowerCase().includes(q))
     );
-  });
+  }, [currentTabSessions, searchQuery]);
 
   const renderSessionItem = ({ item }: { item: any }) => {
     const isExpanded = expandedIds.has(item._id);
     const start = new Date(item.startTime);
     const end = new Date(item.endTime);
+    const now = Date.now();
     const formattedDate = start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
     const formattedStart = start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
     const formattedEnd = end.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 
     const isBooked = item.status === 'booked';
     const isCancelled = item.status === 'cancelled';
+    const isCompleted = item.status === 'completed' || (isBooked && end.getTime() < now);
+    const isExpiredUnbooked = item.status === 'available' && end.getTime() < now;
+
+    // Determine status badge colors and labels
+    let badgeText = 'Available';
+    let badgeBg = isDark ? '#064E3B' : '#DCFCE7';
+    let badgeColor = isDark ? '#34D399' : '#15803D';
+
+    if (isCancelled) {
+      badgeText = 'Cancelled';
+      badgeBg = isDark ? '#450A0A' : '#FEE2E2';
+      badgeColor = isDark ? '#F87171' : '#B91C1C';
+    } else if (isCompleted) {
+      badgeText = 'Completed';
+      badgeBg = isDark ? '#064E3B' : '#DCFCE7';
+      badgeColor = isDark ? '#34D399' : '#15803D';
+    } else if (isExpiredUnbooked) {
+      badgeText = 'Expired';
+      badgeBg = isDark ? '#334155' : '#F1F5F9';
+      badgeColor = isDark ? '#94A3B8' : '#64748B';
+    } else if (isBooked) {
+      badgeText = 'Booked';
+      badgeBg = isDark ? '#1E3A8A' : '#DBEAFE';
+      badgeColor = isDark ? '#60A5FA' : '#1D4ED8';
+    }
 
     return (
       <View style={[styles.accordionCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
@@ -421,9 +481,14 @@ export default function ManageSessionScreen() {
           activeOpacity={0.75}
         >
           <View style={styles.cardHeaderLeft}>
-            <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
-              {item.title}
-            </Text>
+            <View style={styles.cardTitleRow}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={1}>
+                {item.title}
+              </Text>
+              <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                <Text style={[styles.statusBadgeText, { color: badgeColor }]}>{badgeText}</Text>
+              </View>
+            </View>
             <Text style={[styles.cardSubtitle, { color: colors.textSecondary }]} numberOfLines={1}>
               {item.description || (item.sessionType === 'physical' ? 'Physical Session' : 'Virtual Session')}
             </Text>
@@ -529,44 +594,72 @@ export default function ManageSessionScreen() {
 
             {/* Bottom Actions Row */}
             <View style={styles.cardActions}>
-              {/* Cancel / Delete Icon */}
-              <TouchableOpacity
-                onPress={() => {
-                  if (isBooked) {
-                    handleCancelSession(item._id, true);
-                  } else {
-                    handleDeleteSession(item._id);
-                  }
-                }}
-                hitSlop={8}
-                style={styles.actionIconBtn}
-                accessibilityLabel="Cancel or Delete Session"
-              >
-                <Ionicons name="close-circle-outline" size={26} color={colors.accentRed} />
-              </TouchableOpacity>
+              {activeTab === 'active' ? (
+                <>
+                  {/* Cancel / Delete Icon */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (isBooked) {
+                        handleCancelSession(item._id, true);
+                      } else {
+                        handleDeleteSession(item._id);
+                      }
+                    }}
+                    hitSlop={8}
+                    style={styles.actionIconBtn}
+                    accessibilityLabel="Cancel or Delete Session"
+                  >
+                    <Ionicons name="close-circle-outline" size={26} color={colors.accentRed} />
+                  </TouchableOpacity>
 
-              {/* Edit Icon */}
-              {!isCancelled && (
-                <TouchableOpacity
-                  onPress={() => openEditModal(item)}
-                  hitSlop={8}
-                  style={styles.actionIconBtn}
-                  accessibilityLabel="Edit Session"
-                >
-                  <Ionicons name="create-outline" size={25} color={colors.brand} />
-                </TouchableOpacity>
-              )}
+                  {/* Edit Icon */}
+                  {!isCancelled && (
+                    <TouchableOpacity
+                      onPress={() => openEditModal(item)}
+                      hitSlop={8}
+                      style={styles.actionIconBtn}
+                      accessibilityLabel="Edit Session"
+                    >
+                      <Ionicons name="create-outline" size={25} color={colors.brand} />
+                    </TouchableOpacity>
+                  )}
 
-              {/* Booked Member / Attendees Icon (Physical Sessions only) */}
-              {isBooked && item.sessionType === 'physical' && (
-                <TouchableOpacity
-                  onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
-                  hitSlop={8}
-                  style={styles.actionIconBtn}
-                  accessibilityLabel="View Booked Member"
-                >
-                  <Ionicons name="people-outline" size={25} color={colors.brand} />
-                </TouchableOpacity>
+                  {/* Booked Member / Attendees Details */}
+                  {isBooked && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
+                      hitSlop={8}
+                      style={styles.actionIconBtn}
+                      accessibilityLabel="View Booked Member"
+                    >
+                      <Ionicons name="people-outline" size={25} color={colors.brand} />
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                <>
+                  {/* Past Log: Member Details if attended */}
+                  {item.userId && (
+                    <TouchableOpacity
+                      onPress={() => setSelectedMember(item.userId?.name || 'CareCircle Member')}
+                      hitSlop={8}
+                      style={styles.actionIconBtn}
+                      accessibilityLabel="View Booked Member"
+                    >
+                      <Ionicons name="person-outline" size={23} color={colors.brand} />
+                    </TouchableOpacity>
+                  )}
+
+                  {/* Past Log: Delete Record */}
+                  <TouchableOpacity
+                    onPress={() => handleDeleteSession(item._id)}
+                    hitSlop={8}
+                    style={styles.actionIconBtn}
+                    accessibilityLabel="Delete Past Record"
+                  >
+                    <Ionicons name="trash-outline" size={23} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </>
               )}
             </View>
           </View>
@@ -609,7 +702,7 @@ export default function ManageSessionScreen() {
         <View style={[styles.searchBar, { backgroundColor: colors.inputBg }]}>
           <TextInput
             style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search"
+            placeholder="Search sessions, members, venues..."
             placeholderTextColor={colors.textSecondary}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -618,6 +711,70 @@ export default function ManageSessionScreen() {
         </View>
       </View>
 
+      {/* Segmented Control Tabs */}
+      <View style={styles.segmentContainer}>
+        <TouchableOpacity
+          style={[
+            styles.segmentTab,
+            {
+              backgroundColor: activeTab === 'active' ? colors.brand : colors.tabInactive,
+              borderTopLeftRadius: 12,
+              borderBottomLeftRadius: 12,
+            },
+          ]}
+          onPress={() => setActiveTab('active')}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={[
+              styles.segmentTabText,
+              { color: activeTab === 'active' ? '#FFFFFF' : colors.tabInactiveText },
+            ]}
+          >
+            Active Sessions ({activeSessions.length})
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.segmentTab,
+            {
+              backgroundColor: activeTab === 'past' ? colors.brand : colors.tabInactive,
+              borderTopRightRadius: 12,
+              borderBottomRightRadius: 12,
+            },
+          ]}
+          onPress={() => setActiveTab('past')}
+          activeOpacity={0.85}
+        >
+          <Text
+            style={[
+              styles.segmentTabText,
+              { color: activeTab === 'past' ? '#FFFFFF' : colors.tabInactiveText },
+            ]}
+          >
+            Past Log ({pastSessions.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Past Log Toolbar with Export PDF */}
+      {activeTab === 'past' && (
+        <View style={styles.logToolbar}>
+          <Text style={[styles.logToolbarTitle, { color: colors.textSecondary }]}>
+            Past Records ({pastSessions.length})
+          </Text>
+          <TouchableOpacity
+            style={[styles.exportPdfBtn, { backgroundColor: colors.brandLight, borderColor: colors.brand }]}
+            onPress={() => setShowDownloadModal(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="document-text-outline" size={15} color={colors.brand} style={{ marginRight: 6 }} />
+            <Text style={[styles.exportPdfBtnText, { color: colors.brand }]}>Export PDF</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Main List */}
       {loading && !refreshing ? (
         <View style={styles.center}>
@@ -625,10 +782,21 @@ export default function ManageSessionScreen() {
         </View>
       ) : filteredSessions.length === 0 ? (
         <View style={styles.center}>
-          <Ionicons name="calendar-outline" size={60} color={colors.textSecondary} style={{ opacity: 0.35, marginBottom: 12 }} />
-          <Text style={[styles.emptyTitle, { color: colors.text }]}>No Sessions Found</Text>
+          <Ionicons
+            name={activeTab === 'active' ? 'calendar-outline' : 'archive-outline'}
+            size={60}
+            color={colors.textSecondary}
+            style={{ opacity: 0.35, marginBottom: 12 }}
+          />
+          <Text style={[styles.emptyTitle, { color: colors.text }]}>
+            {activeTab === 'active' ? 'No Active Sessions' : 'No Past Sessions Logged'}
+          </Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            {searchQuery ? 'No sessions match your search criteria.' : 'Tap the + button to add your first support session.'}
+            {searchQuery
+              ? 'No sessions match your search criteria.'
+              : activeTab === 'active'
+              ? 'Upcoming available and booked sessions will appear here. Expired sessions automatically move to the Past Log.'
+              : 'Past, completed, or cancelled support sessions will be archived here for your records.'}
           </Text>
         </View>
       ) : (
@@ -644,15 +812,17 @@ export default function ManageSessionScreen() {
         />
       )}
 
-      {/* Floating Action Button (FAB) */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: colors.fabBg }]}
-        onPress={openCreateModal}
-        activeOpacity={0.85}
-        accessibilityLabel="Add session"
-      >
-        <Ionicons name="add" size={32} color="#FFFFFF" />
-      </TouchableOpacity>
+      {/* Floating Action Button (FAB) - available on Active tab */}
+      {activeTab === 'active' && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: colors.fabBg }]}
+          onPress={openCreateModal}
+          activeOpacity={0.85}
+          accessibilityLabel="Add session"
+        >
+          <Ionicons name="add" size={32} color="#FFFFFF" />
+        </TouchableOpacity>
+      )}
 
       {/* Create / Edit Modal */}
       <Modal
@@ -892,6 +1062,13 @@ export default function ManageSessionScreen() {
         onCancel={confirmDialog?.cancelText !== null && !confirmDialog?.singleButton ? () => setConfirmDialog(null) : undefined}
         loading={confirmLoading}
       />
+
+      {/* Session PDF Export Modal */}
+      <SessionReportDownloadModal
+        visible={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+        role="supporter"
+      />
     </SafeAreaView>
   );
 }
@@ -967,11 +1144,67 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 10,
   },
+  segmentContainer: {
+    flexDirection: 'row',
+    height: 44,
+    marginHorizontal: 20,
+    marginBottom: 14,
+  },
+  logToolbar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  logToolbarTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  exportPdfBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  exportPdfBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  segmentTab: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+  },
+  segmentTabText: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+    gap: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.2,
+  },
   cardTitle: {
     fontSize: 18,
     fontWeight: '700',
     letterSpacing: -0.2,
-    marginBottom: 2,
+    flex: 1,
   },
   cardSubtitle: {
     fontSize: 14,
