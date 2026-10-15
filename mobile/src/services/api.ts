@@ -3,10 +3,14 @@ import Constants from 'expo-constants';
 import { todayStamp } from '@/constants/moods';
 import { tokenStorage } from './storage';
 
+// Set to true only if you want to test against Railway in dev instead of your local backend
+export const USE_REMOTE_BACKEND = true;
+
 // PRODUCTION BACKEND URL Railway
 export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-fb7f.up.railway.app';
 
-const IS_PHYSICAL_DEVICE = true;
+// Set to false if testing on an Android Emulator, or true if testing on a physical phone over Wi-Fi
+export const IS_PHYSICAL_DEVICE = false;
 
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
@@ -41,7 +45,11 @@ const localBaseUrl = (): string => {
     return 'http://10.0.2.2:5000';
   }
 
-  const hostUri = Constants.expoConfig?.hostUri;
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest?.debuggerHost ||
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+
   if (hostUri) {
     const ip = hostUri.split(':')[0];
     if (ip) return `http://${ip}:5000`;
@@ -51,16 +59,22 @@ const localBaseUrl = (): string => {
 };
 
 const getBaseUrl = (): string => {
-  // Use Railway URL if configured
-  if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
-    return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, '');
+  // In production, or if explicitly configured to use remote backend
+  if (!__DEV__ || USE_REMOTE_BACKEND) {
+    if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
+      return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, '');
+    }
+    const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
+    if (configured) return productionUrl(configured);
+    if (!__DEV__) {
+      console.error('Set EXPO_PUBLIC_API_URL to an https:// address before shipping a production build.');
+      return '';
+    }
   }
+
   const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
   if (configured) return productionUrl(configured);
-  if (!__DEV__) {
-    console.error('Set EXPO_PUBLIC_API_URL to an https:// address before shipping a production build.');
-    return '';
-  }
+
   return localBaseUrl();
 };
 
