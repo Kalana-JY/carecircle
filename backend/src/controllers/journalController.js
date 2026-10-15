@@ -15,7 +15,7 @@ const handleError = (res, error) => {
     return res.status(400).json({ message: 'Invalid journal input' });
   }
 
-  console.error(error);
+  console.error('Journal request failed:', error?.name || 'Error');
   return res.status(500).json({ message: 'Server error' });
 };
 
@@ -57,7 +57,7 @@ const listJournals = async (req, res) => {
       }
       if (req.query.end) {
         if (!isValidDate(req.query.end)) return res.status(400).json({ message: 'end must be a valid date' });
-        filter.date.$lte = new Date(req.query.end);
+        filter.date.$lte = new Date(`${req.query.end}T23:59:59.999Z`);
       }
     }
 

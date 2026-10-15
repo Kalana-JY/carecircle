@@ -13,6 +13,7 @@ const http = require("http");
 const cors = require("cors");
 const { Server } = require("socket.io");
 const jwt = require("jsonwebtoken");
+const { getJwtSecret } = require("./src/config/jwt");
 const connectDB = require("./src/config/db");
 const User = require("./src/models/User");
 const Message = require("./src/models/Message");
@@ -88,7 +89,6 @@ app.get("/api/ping-crisis", (req, res) => {
 mount('/api/crisis-support', crisisSupportRoutes);
 
 // ── Socket.IO ──────────────────────────────────────────────────────────
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret';
 const onlineUsers = new Map(); // userId -> Set of socket IDs
 
 io.use(async (socket, next) => {
@@ -96,7 +96,7 @@ io.use(async (socket, next) => {
     const token = socket.handshake.auth?.token;
     if (!token) return next(new Error('Authentication required'));
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     const user = await User.findById(decoded.id).select('-password');
     if (!user) return next(new Error('User not found'));
 

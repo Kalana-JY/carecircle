@@ -191,7 +191,10 @@ const buildSharedReport = async (share) => {
     { startKey: share.startKey, endKey: share.endKey },
     { name: owner?.name, email: owner?.email }
   );
-  return share.includeNotes ? report : stripNotes(report);
+  const shared = share.includeNotes ? report : stripNotes(report);
+  // A link recipient does not need the owner's email address.
+  shared.owner = { name: shared.owner?.name || null };
+  return shared;
 };
 
 // Public: a recipient opens the shared report without a CareCircle account.

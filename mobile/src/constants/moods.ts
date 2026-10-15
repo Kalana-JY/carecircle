@@ -1,12 +1,25 @@
 export const BRAND = '#3A7CA5';
 
 export const MOODS = [
-  { label: 'Radiant', emoji: '🤩' },
-  { label: 'Steady', emoji: '😌' },
-  { label: 'Cloudy', emoji: '😐' },
-  { label: 'Heavy', emoji: '🙁' },
-  { label: 'Stormy', emoji: '😣' },
+  { label: 'Radiant', emoji: '🤩', score: 5 },
+  { label: 'Steady', emoji: '😌', score: 4 },
+  { label: 'Cloudy', emoji: '😐', score: 3 },
+  { label: 'Heavy', emoji: '🙁', score: 2 },
+  { label: 'Stormy', emoji: '😣', score: 1 },
 ];
+
+export const moodScoreFor = (mood?: string) =>
+  MOODS.find((item) => item.label.toLowerCase() === (mood || '').trim().toLowerCase())?.score;
+
+/** Turns a 1-5 average into the nearest mood name, so the score is not shown by colour alone. */
+export const labelForAverage = (score: number) => {
+  if (!score) return 'No entries yet';
+  if (score >= 4.5) return 'Radiant';
+  if (score >= 3.5) return 'Steady';
+  if (score >= 2.5) return 'Cloudy';
+  if (score >= 1.5) return 'Heavy';
+  return 'Stormy';
+};
 
 const pad = (value: number) => String(value).padStart(2, '0');
 
