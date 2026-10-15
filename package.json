@@ -6,5 +6,8 @@
   "scripts": {
     "start": "cd backend && node server.js",
     "build": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=20.0.0"
   }
 }

@@ -1,3 +1,7 @@
+const nodeCrypto = require('crypto');
+if (typeof globalThis.crypto === 'undefined') globalThis.crypto = nodeCrypto;
+if (typeof global.crypto === 'undefined') global.crypto = nodeCrypto;
+
 const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
