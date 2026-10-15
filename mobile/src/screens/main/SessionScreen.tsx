@@ -246,7 +246,7 @@ export default function SessionScreen() {
             <View style={styles.detailRow}>
               <Ionicons name="people-outline" size={18} color={colors.textSecondary} style={styles.detailIcon} />
               <Text style={[styles.detailText, { color: colors.text }]}>
-                {item.sessionType === 'physical' ? '8/15' : '1 on 1 Available'}
+                {item.sessionType === 'physical' ? '1 on 1 In-Person' : '1 on 1 Online'}
               </Text>
             </View>
 
@@ -256,10 +256,7 @@ export default function SessionScreen() {
                 <Ionicons name="location-outline" size={18} color={colors.textSecondary} style={[styles.detailIcon, { marginTop: 2 }]} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.detailText, { color: colors.text }]}>
-                    Physical • Venue: {item.venue || 'Community Center'}
-                  </Text>
-                  <Text style={[styles.detailSubText, { color: colors.textSecondary }]}>
-                    123 Main St, Suite 400
+                    Physical • Venue: {item.venue || 'To be confirmed'}
                   </Text>
                 </View>
               </View>

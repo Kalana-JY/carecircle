@@ -9,6 +9,7 @@ const {
   notifySessionCancelled,
   notifySessionDeleted,
 } = require('../services/sessionNotificationService');
+const { generateSessionPdfBuffer } = require('../services/sessionReportService');
 
 // Helper helper to verify if the user is an approved supporter
 const checkSupporterApproval = async (userId) => {
@@ -133,6 +134,16 @@ const getMySchedule = async (req, res) => {
       return res.status(403).json({ message: 'Only certified peer supporters can view their hosting schedule.' });
     }
 
+    // Auto-update booked sessions that have ended to 'completed'
+    await Session.updateMany(
+      {
+        supporterId: req.user._id,
+        status: 'booked',
+        endTime: { $lt: new Date() },
+      },
+      { status: 'completed' }
+    );
+
     const sessions = await Session.find({ supporterId: req.user._id })
       .populate('userId', 'name email phoneNumber')
       .sort({ startTime: 1 });
@@ -150,6 +161,16 @@ const getMySchedule = async (req, res) => {
 // @access  Private
 const getMyBookings = async (req, res) => {
   try {
+    // Auto-update booked sessions that have ended to 'completed'
+    await Session.updateMany(
+      {
+        userId: req.user._id,
+        status: 'booked',
+        endTime: { $lt: new Date() },
+      },
+      { status: 'completed' }
+    );
+
     const sessions = await Session.find({ userId: req.user._id })
       .populate('supporterId', 'name email phoneNumber')
       .sort({ startTime: 1 });
@@ -529,6 +550,70 @@ const getSupporterFeedback = async (req, res) => {
   }
 };
 
+// @desc    Export sessions history/log as PDF
+// @route   GET /api/sessions/export-pdf
+// @access  Private
+const exportSessionReportPdf = async (req, res) => {
+  try {
+    const { role = 'member', period = 'monthly', year, month } = req.query;
+
+    const parsedYear = parseInt(year, 10) || new Date().getFullYear();
+    const parsedMonth = parseInt(month, 10) || (new Date().getMonth() + 1);
+
+    let startDate;
+    let endDate;
+
+    if (period === 'yearly') {
+      startDate = new Date(Date.UTC(parsedYear, 0, 1, 0, 0, 0));
+      endDate = new Date(Date.UTC(parsedYear, 11, 31, 23, 59, 59, 999));
+    } else {
+      startDate = new Date(Date.UTC(parsedYear, parsedMonth - 1, 1, 0, 0, 0));
+      endDate = new Date(Date.UTC(parsedYear, parsedMonth, 0, 23, 59, 59, 999));
+    }
+
+    let sessions = [];
+
+    if (role === 'supporter') {
+      const isSupporter = await checkSupporterApproval(req.user._id);
+      if (!isSupporter) {
+        return res.status(403).json({ message: 'Only certified peer supporters can export supporter logs.' });
+      }
+
+      sessions = await Session.find({
+        supporterId: req.user._id,
+        startTime: { $gte: startDate, $lte: endDate },
+      })
+        .populate('userId', 'name email')
+        .sort({ startTime: 1 });
+    } else {
+      sessions = await Session.find({
+        userId: req.user._id,
+        startTime: { $gte: startDate, $lte: endDate },
+      })
+        .populate('supporterId', 'name email')
+        .sort({ startTime: 1 });
+    }
+
+    const pdfBuffer = await generateSessionPdfBuffer({
+      user: req.user,
+      role,
+      period,
+      year: parsedYear,
+      month: parsedMonth,
+      sessions,
+    });
+
+    const filename = `carecircle-sessions-${role}-${period}-${parsedYear}${period === 'monthly' ? `-${parsedMonth}` : ''}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(pdfBuffer);
+  } catch (error) {
+    console.error('[SessionReport] Export error:', error);
+    res.status(500).json({ message: 'Failed to generate session PDF report', error: error.message });
+  }
+};
+
 module.exports = {
   createSession,
   getSessions,
@@ -540,4 +625,5 @@ module.exports = {
   cancelSession,
   submitSessionFeedback,
   getSupporterFeedback,
+  exportSessionReportPdf,
 };
