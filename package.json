@@ -1,0 +1,10 @@
+{
+  "name": "carecircle-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CareCircle Mental Health Peer-Support Monorepo",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "cd backend && npm install"
+  }
+}
