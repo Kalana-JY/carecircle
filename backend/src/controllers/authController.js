@@ -1,13 +1,15 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { getJwtSecret } = require('../config/jwt');
+const { isAdminUser } = require('../middleware/authMiddleware');
 
 const adminEmail = String(process.env.ADMIN_EMAIL || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '').toLowerCase();
 const adminPassword = String(process.env.ADMIN_PASSWORD || '').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, '');
 
 // Helper to generate JWT
 const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'fallback_secret', {
+  return jwt.sign({ id }, getJwtSecret(), {
     expiresIn: '30d',
   });
 };
@@ -82,7 +84,7 @@ const signup = async (req, res) => {
       res.status(400).json({ message: 'Invalid user data' });
     }
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    res.status(500).json({ message: 'Server error' });
   }
 };
 
@@ -114,8 +116,9 @@ const signin = async (req, res) => {
         user = await User.create({
           name: 'Admin',
           email: adminEmail,
-
+          phoneNumber: String(process.env.ADMIN_PHONE || '+10000000000').replace(/\r/g, '').trim().replace(/^['"]|['"]$/g, ''),
           password: hashedPassword,
+          role: 'admin',
         });
       } else {
         // Sync password hash in DB if the environment variable password changed
@@ -124,8 +127,9 @@ const signin = async (req, res) => {
           const salt = await bcrypt.genSalt(10);
           const hashedPassword = await bcrypt.hash(adminPassword, salt);
           user.password = hashedPassword;
-          await user.save();
         }
+        if (user.role !== 'admin') user.role = 'admin';
+        await user.save();
       }
 
       return res.json({
@@ -155,11 +159,12 @@ const signin = async (req, res) => {
       name: user.name,
       email: user.email,
       phoneNumber: user.phoneNumber,
-      isAdmin: false,
+      isAdmin: isAdminUser(user),
       token: generateToken(user._id),
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('Sign in failed:', error?.name || 'Error');
+    res.status(500).json({ message: 'Server error' });
   }
 };
 

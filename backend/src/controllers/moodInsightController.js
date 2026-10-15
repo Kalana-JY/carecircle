@@ -15,6 +15,7 @@ const {
   monthlyBuckets,
   trendDirection,
   analysePatterns,
+  recordingStreak,
   compareSummaries,
 } = require('../services/moodInsights');
 const {
@@ -33,9 +34,18 @@ const boundedInt = (raw, fallback, min, max) => {
   return Math.min(max, Math.max(min, parsed));
 };
 
+// The phone sends its local calendar day as ?today= so weeks are Monday-Sunday
+// in the user's timezone. Without it, the server UTC date is used.
+const resolveToday = (query = {}) => {
+  if (query.today === undefined || query.today === '') return { today: dateKey() };
+  if (!isValidDate(query.today)) return { error: 'today must be a valid date in YYYY-MM-DD format' };
+  return { today: query.today };
+};
+
 // Resolves ?start=&end= into inclusive day keys, defaulting to a trailing window.
 const resolveRange = (query, fallbackDays = DEFAULT_REPORT_DAYS) => {
-  const today = dateKey();
+  const todayResult = resolveToday(query);
+  if (todayResult.error) return todayResult;
 
   if (query.start !== undefined && !isValidDate(query.start)) {
     return { error: 'start must be a valid date in YYYY-MM-DD format' };
@@ -44,7 +54,7 @@ const resolveRange = (query, fallbackDays = DEFAULT_REPORT_DAYS) => {
     return { error: 'end must be a valid date in YYYY-MM-DD format' };
   }
 
-  const endKey = query.end || today;
+  const endKey = query.end || todayResult.today;
   const startKey = query.start || addDaysKey(endKey, -(fallbackDays - 1));
 
   if (startKey > endKey) return { error: 'start must be on or before end' };
@@ -89,25 +99,35 @@ exports.getMoodHistory = async (req, res) => {
 // US-22 - View weekly mood trends
 exports.getWeeklyTrends = async (req, res) => {
   try {
+    const todayResult = resolveToday(req.query);
+    if (todayResult.error) return res.status(400).json({ message: todayResult.error });
+
     const weeks = boundedInt(req.query.weeks, DEFAULT_TREND_WEEKS, 1, MAX_TREND_WEEKS);
     if (weeks === null) return res.status(400).json({ message: 'weeks must be a number' });
 
-    const currentWeekStart = startOfWeekKey();
+    const today = todayResult.today;
+    const reference = new Date(`${today}T12:00:00.000Z`);
+    const currentWeekStart = startOfWeekKey(reference);
     const startKey = addDaysKey(currentWeekStart, -(weeks - 1) * 7);
     const endKey = addDaysKey(currentWeekStart, 6);
 
     const entries = await fetchEntries(req.user._id, { startKey, endKey });
-    const buckets = weeklyBuckets(entries, weeks);
+    const buckets = weeklyBuckets(entries, weeks, reference);
     const thisWeek = buckets[buckets.length - 1];
     const lastWeek = buckets.length > 1 ? buckets[buckets.length - 2] : null;
+    const streakEntries = await fetchEntries(req.user._id, {
+      startKey: addDaysKey(today, -120),
+      endKey: today,
+    });
 
     return res.json({
-      range: { start: startKey, end: endKey, weeks },
+      range: { start: startKey, end: endKey, weeks, today },
       weeks: buckets,
       thisWeek,
       lastWeek,
       weekOverWeek: lastWeek ? compareSummaries(thisWeek, lastWeek) : null,
       trend: trendDirection(buckets),
+      recordingStreak: recordingStreak(streakEntries, today),
     });
   } catch (error) {
     return handleError(res, error);
@@ -117,16 +137,20 @@ exports.getWeeklyTrends = async (req, res) => {
 // US-23 - View monthly mood trends
 exports.getMonthlyTrends = async (req, res) => {
   try {
+    const todayResult = resolveToday(req.query);
+    if (todayResult.error) return res.status(400).json({ message: todayResult.error });
+
     const months = boundedInt(req.query.months, DEFAULT_TREND_MONTHS, 1, MAX_TREND_MONTHS);
     if (months === null) return res.status(400).json({ message: 'months must be a number' });
 
-    const currentMonth = monthKey(new Date());
+    const reference = new Date(`${todayResult.today}T12:00:00.000Z`);
+    const currentMonth = monthKey(reference);
     const startMonth = addMonthsKey(currentMonth, -(months - 1));
     const startKey = `${startMonth}-01`;
     const endKey = addDaysKey(`${addMonthsKey(currentMonth, 1)}-01`, -1);
 
     const entries = await fetchEntries(req.user._id, { startKey, endKey });
-    const buckets = monthlyBuckets(entries, months);
+    const buckets = monthlyBuckets(entries, months, reference);
     const thisMonth = buckets[buckets.length - 1];
     const lastMonth = buckets.length > 1 ? buckets[buckets.length - 2] : null;
 
@@ -190,11 +214,15 @@ exports.compareMoodProgress = async (req, res) => {
       current = { startKey: req.query.currentStart, endKey: req.query.currentEnd };
       previous = { startKey: req.query.previousStart, endKey: req.query.previousEnd };
     } else if (period === 'week') {
-      const thisWeekStart = startOfWeekKey();
+      const todayResult = resolveToday(req.query);
+      if (todayResult.error) return res.status(400).json({ message: todayResult.error });
+      const thisWeekStart = startOfWeekKey(new Date(`${todayResult.today}T12:00:00.000Z`));
       current = { startKey: thisWeekStart, endKey: addDaysKey(thisWeekStart, 6) };
       previous = { startKey: addDaysKey(thisWeekStart, -7), endKey: addDaysKey(thisWeekStart, -1) };
     } else {
-      const thisMonth = monthKey(new Date());
+      const todayResult = resolveToday(req.query);
+      if (todayResult.error) return res.status(400).json({ message: todayResult.error });
+      const thisMonth = monthKey(new Date(`${todayResult.today}T12:00:00.000Z`));
       const lastMonth = addMonthsKey(thisMonth, -1);
       current = { startKey: `${thisMonth}-01`, endKey: addDaysKey(`${addMonthsKey(thisMonth, 1)}-01`, -1) };
       previous = { startKey: `${lastMonth}-01`, endKey: addDaysKey(`${thisMonth}-01`, -1) };
@@ -212,7 +240,7 @@ exports.compareMoodProgress = async (req, res) => {
       period: usesExplicit ? 'custom' : period,
       current: {
         range: { start: current.startKey, end: current.endKey },
-        label: period === 'month' && !usesExplicit ? monthLabel(monthKey(new Date())) : `${current.startKey} to ${current.endKey}`,
+        label: period === 'month' && !usesExplicit ? monthLabel(current.startKey.slice(0, 7)) : `${current.startKey} to ${current.endKey}`,
         ...currentSummary,
       },
       previous: {

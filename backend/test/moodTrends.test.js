@@ -12,6 +12,9 @@ const Mood = require('../src/models/Mood');
 const MoodReportShare = require('../src/models/MoodReportShare');
 const moodRoutes = require('../src/routes/moodRoutes');
 const moodReportRoutes = require('../src/routes/moodReportRoutes');
+const journalRoutes = require('../src/routes/journalRoutes');
+const wellnessActivityRoutes = require('../src/routes/wellnessActivityRoutes');
+const WellnessActivity = require('../src/models/WellnessActivity');
 
 const signToken = (user) => jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 
@@ -96,6 +99,8 @@ describe('mood history, trends, patterns, and reports', { timeout: 120000, concu
     app.use(express.json());
     mount(app, '/api/moods', moodRoutes);
     mount(app, '/api/mood-reports', moodReportRoutes);
+    mount(app, '/api/journals', journalRoutes);
+    mount(app, '/api/wellness-activities', wellnessActivityRoutes);
 
     server = await new Promise((resolve) => {
       const httpServer = app.listen(0, '127.0.0.1', () => resolve(httpServer));
@@ -344,6 +349,7 @@ describe('mood history, trends, patterns, and reports', { timeout: 120000, concu
     assert.equal(viewed.body.recipientNote, 'For my therapist');
     assert.equal(viewed.body.report.summary.entryCount, 1);
     assert.equal(viewed.body.report.entries[0].notes, undefined, 'notes are withheld unless opted in');
+    assert.equal(viewed.body.report.owner.email, undefined, 'the share link does not expose the owner email');
 
     const sharedPdf = await request(port, 'GET', `/api/mood-reports/shared/${share.token}/export?format=pdf`);
     assert.equal(sharedPdf.status, 200);
@@ -406,5 +412,221 @@ describe('mood history, trends, patterns, and reports', { timeout: 120000, concu
 
     const strangerHistory = await request(port, 'GET', '/api/moods/history', { token: stranger.token });
     assert.equal(strangerHistory.body.summary.entryCount, 0);
+  });
+
+  it('scores Radiant, Steady, Cloudy, Heavy, and Stormy on the 5 to 1 scale', async () => {
+    const { user, token } = await makeUser();
+    await seed(user, [
+      { date: '2026-04-06', mood: 'Radiant' },
+      { date: '2026-04-07', mood: 'Steady' },
+      { date: '2026-04-08', mood: 'Cloudy' },
+      { date: '2026-04-09', mood: 'Heavy' },
+      { date: '2026-04-10', mood: 'Stormy' },
+    ]);
+
+    const response = await request(port, 'GET', '/api/moods/history?start=2026-04-06&end=2026-04-10&today=2026-04-10', { token });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.summary.entryCount, 5);
+    assert.equal(response.body.summary.averageScore, 3);
+    const scores = Object.fromEntries(response.body.items.map((item) => [item.mood, item.score]));
+    assert.deepEqual(scores, { Radiant: 5, Steady: 4, Cloudy: 3, Heavy: 2, Stormy: 1 });
+  });
+
+  it('keeps one mood per user per day and still scores older mood words', async () => {
+    const owner = await makeUser();
+    const stranger = await makeUser();
+    const day = '2026-05-04';
+
+    await seed(owner.user, [
+      { date: day, mood: 'happy', notes: 'older duplicate' },
+      { date: day, mood: 'sad', notes: 'later duplicate' },
+    ]);
+
+    const created = await request(port, 'POST', '/api/moods', {
+      token: owner.token,
+      body: { date: day, mood: 'Radiant', notes: 'settled' },
+    });
+    assert.equal(created.status, 200);
+    assert.equal(created.body.updatedExisting, true);
+    assert.equal(created.body.mood, 'Radiant');
+
+    const changed = await request(port, 'POST', '/api/moods', {
+      token: owner.token,
+      body: { date: day, mood: 'Heavy', notes: 'changed my mind' },
+    });
+    assert.equal(changed.status, 200);
+    assert.equal(changed.body._id, created.body._id);
+
+    const other = await request(port, 'POST', '/api/moods', {
+      token: stranger.token,
+      body: { date: day, mood: 'Steady' },
+    });
+    assert.equal(other.status, 201);
+
+    const history = await request(port, 'GET', `/api/moods/history?start=${day}&end=${day}&today=${day}`, { token: owner.token });
+    assert.equal(history.body.summary.entryCount, 1);
+    assert.equal(history.body.items[0].mood, 'Heavy');
+    assert.equal(history.body.items[0].score, 2);
+    assert.equal(history.body.items[0].notes, 'changed my mind');
+
+    const hidden = await request(port, 'GET', `/api/moods/${created.body._id}`, { token: stranger.token });
+    assert.equal(hidden.status, 404);
+
+    const legacy = await request(port, 'POST', '/api/moods', {
+      token: owner.token,
+      body: { date: '2026-05-05', mood: 'happy' },
+    });
+    assert.equal(legacy.status, 201);
+    const legacyHistory = await request(port, 'GET', '/api/moods/history?start=2026-05-05&end=2026-05-05&today=2026-05-05', {
+      token: owner.token,
+    });
+    assert.equal(legacyHistory.body.items[0].score, 5);
+  });
+
+  it('builds a Monday to Sunday week from the client calendar day', async () => {
+    const { user, token } = await makeUser();
+    await seed(user, [
+      { date: '2026-04-06', mood: 'Radiant' },
+      { date: '2026-04-07', mood: 'Steady' },
+      { date: '2026-04-08', mood: 'Cloudy' },
+      { date: '2026-04-12', mood: 'Stormy' },
+    ]);
+
+    const response = await request(port, 'GET', '/api/moods/trends/weekly?weeks=1&today=2026-04-08', { token });
+
+    assert.equal(response.status, 200);
+    assert.equal(response.body.thisWeek.weekStart, '2026-04-06');
+    assert.equal(response.body.thisWeek.weekEnd, '2026-04-12');
+    assert.equal(response.body.thisWeek.days.length, 7);
+    assert.equal(response.body.thisWeek.days[0].dayOfWeek, 'Monday');
+    assert.equal(response.body.thisWeek.days[0].date, '2026-04-06');
+    assert.equal(response.body.thisWeek.days[0].averageScore, 5);
+    assert.equal(response.body.thisWeek.days[6].dayOfWeek, 'Sunday');
+    assert.equal(response.body.thisWeek.days[6].date, '2026-04-12');
+    assert.equal(response.body.thisWeek.days[6].averageScore, 1);
+    assert.equal(response.body.thisWeek.averageScore, 3.25);
+    assert.equal(response.body.recordingStreak.length, 3);
+    assert.equal(response.body.recordingStreak.includesToday, true);
+
+    const badToday = await request(port, 'GET', '/api/moods/trends/weekly?today=2026-04-31', { token });
+    assert.equal(badToday.status, 400);
+  });
+
+  it('rejects invalid mood input and scores an unknown label as neutral', async () => {
+    const { token } = await makeUser();
+
+    const missing = await request(port, 'POST', '/api/moods', { token, body: { date: '2026-06-01', mood: '   ' } });
+    assert.equal(missing.status, 400);
+
+    const badIntensity = await request(port, 'POST', '/api/moods', {
+      token,
+      body: { date: '2026-06-01', mood: 'Cloudy', intensity: 99 },
+    });
+    assert.equal(badIntensity.status, 400);
+
+    const unknown = await request(port, 'POST', '/api/moods', {
+      token,
+      body: { date: '2026-06-02', mood: 'bewildered' },
+    });
+    assert.equal(unknown.status, 201);
+
+    const history = await request(port, 'GET', '/api/moods/history?start=2026-06-02&end=2026-06-02&today=2026-06-02', { token });
+    assert.equal(history.body.items[0].score, 3);
+    assert.equal(history.body.items[0].valence, 'neutral');
+  });
+
+  it('summarises only the signed-in user wellbeing logs for the current week', async () => {
+    const owner = await makeUser();
+    const stranger = await makeUser();
+
+    await WellnessActivity.create({
+      userId: owner.user._id,
+      title: 'Evening walk',
+      category: 'Movement',
+      date: new Date('2026-04-06T12:00:00.000Z'),
+      duration: 20,
+      targetPerWeek: 3,
+      logs: [
+        { date: new Date('2026-04-06T12:00:00.000Z'), minutes: 20 },
+        { date: new Date('2026-04-08T12:00:00.000Z'), minutes: 15 },
+        { date: new Date('2026-04-07T12:00:00.000Z'), minutes: 0 },
+        { date: new Date('2026-03-30T12:00:00.000Z'), minutes: 20 },
+      ],
+    });
+    await WellnessActivity.create({
+      userId: stranger.user._id,
+      title: 'Private stretch',
+      category: 'Calm',
+      date: new Date('2026-04-06T12:00:00.000Z'),
+      duration: 10,
+      targetPerWeek: 2,
+      logs: [{ date: new Date('2026-04-06T12:00:00.000Z'), minutes: 10 }],
+    });
+
+    const summary = await request(port, 'GET', '/api/wellness-activities/summary?today=2026-04-08', { token: owner.token });
+    assert.equal(summary.status, 200);
+    assert.equal(summary.body.weekStart, '2026-04-06');
+    assert.equal(summary.body.weekEnd, '2026-04-12');
+    assert.equal(summary.body.loggedDays, 2);
+    assert.equal(summary.body.targetDays, 3);
+    assert.equal(summary.body.items.length, 1);
+    assert.equal(summary.body.items[0].title, 'Evening walk');
+
+    const hidden = await request(port, 'GET', '/api/wellness-activities/summary?today=2026-04-08', { token: stranger.token });
+    assert.equal(hidden.body.loggedDays, 1);
+    assert.equal(hidden.body.items[0].title, 'Private stretch');
+  });
+
+  it('stops one user from updating or exporting another user mood data', async () => {
+    const owner = await makeUser();
+    const stranger = await makeUser();
+    const day = '2026-07-01';
+    await seed(owner.user, [{ date: day, mood: 'Stormy', notes: 'Owner only note' }]);
+    await seed(stranger.user, [{ date: day, mood: 'Radiant', notes: 'Stranger private note' }]);
+
+    const listed = await request(port, 'GET', '/api/moods', { token: owner.token });
+    const ownId = listed.body.items[0]._id;
+
+    const foreignUpdate = await request(port, 'PATCH', `/api/moods/${ownId}`, {
+      token: stranger.token,
+      body: { mood: 'Radiant', notes: 'Taken over' },
+    });
+    assert.equal(foreignUpdate.status, 404);
+
+    const csv = await request(port, 'GET', `/api/moods/reports/export?format=csv&start=${day}&end=${day}&today=${day}`, {
+      token: owner.token,
+    });
+    assert.equal(csv.status, 200);
+    assert.match(csv.body, /Stormy,1,/);
+    assert.equal(csv.body.includes('Stranger private note'), false);
+    assert.equal(csv.body.includes('Radiant'), false);
+  });
+
+  it('keeps journal entries private to the author', async () => {
+    const owner = await makeUser();
+    const stranger = await makeUser();
+
+    const created = await request(port, 'POST', '/api/journals', {
+      token: owner.token,
+      body: { date: '2026-04-08', body: 'A private page', mood: 'Cloudy' },
+    });
+    assert.equal(created.status, 201);
+
+    const ownList = await request(port, 'GET', '/api/journals', { token: owner.token });
+    assert.equal(ownList.body.meta.total, 1);
+    assert.equal(ownList.body.items[0].body, 'A private page');
+
+    const foreignList = await request(port, 'GET', '/api/journals', { token: stranger.token });
+    assert.equal(foreignList.body.meta.total, 0);
+
+    const foreignRead = await request(port, 'GET', `/api/journals/${created.body._id}`, { token: stranger.token });
+    assert.equal(foreignRead.status, 404);
+
+    const badDate = await request(port, 'POST', '/api/journals', {
+      token: owner.token,
+      body: { date: '2026-02-31', body: 'Impossible day' },
+    });
+    assert.equal(badDate.status, 400);
   });
 });

@@ -64,7 +64,12 @@ export function MoodBarChart({
         const barHeight = point.value > 0 ? Math.max(6, ratio * (height - 34)) : 4;
 
         return (
-          <View key={point.key} style={[styles.barColumn, scrollable && styles.barColumnFixed]}>
+          <View
+            key={point.key}
+            style={[styles.barColumn, scrollable && styles.barColumnFixed]}
+            accessible
+            accessibilityLabel={`${point.label}, ${point.value > 0 ? `score ${point.value.toFixed(1)} out of 5` : 'no mood saved'}`}
+          >
             <Text style={styles.barValue}>{point.value > 0 ? point.value.toFixed(1) : '–'}</Text>
             <View style={styles.barTrack}>
               <View

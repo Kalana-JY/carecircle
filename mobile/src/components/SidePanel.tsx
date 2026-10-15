@@ -270,8 +270,7 @@ export function SidePanel({ isOpen, onClose }: SidePanelProps) {
             </TouchableOpacity>
 
             {/* Admin Management Links */}
-            {user?.isAdmin ||
-            user?.email?.toLowerCase().includes('admin') ? (
+            {user?.isAdmin ? (
               <>
                 <TouchableOpacity
                   style={styles.menuItem}

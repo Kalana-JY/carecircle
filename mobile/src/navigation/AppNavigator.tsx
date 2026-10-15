@@ -51,7 +51,7 @@ export function AppNavigator() {
       );
     }
 
-    if (user.isAdmin || user.email?.toLowerCase().includes('admin')) {
+    if (user.isAdmin) {
       return <AdminNavigator />;
     }
 

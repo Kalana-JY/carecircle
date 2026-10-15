@@ -17,6 +17,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 
+import { GoalReminderEditor } from './GoalReminderEditor';
+
 import { Ionicons } from '@expo/vector-icons';
 
 import {
@@ -38,7 +40,6 @@ import {
   isStepGoal,
   progressCaption,
   toDisplayDate,
-  tonightAt,
 } from '@/constants/goals';
 
 type FilterKey =
@@ -256,69 +257,8 @@ export function GoalsOverview({
 
   /* ---------------- REMINDER ---------------- */
 
-  const toggleReminder = async (
-    goal: GoalItem
-  ) => {
-    setBusyId(goal._id);
-
-    try {
-      try {
-        await goalApi.getReminder(
-          goal._id
-        );
-
-        Alert.alert(
-          'Daily reminder',
-          'This goal already has a reminder. Cancel it?',
-          [
-            {
-              text: 'Keep',
-              style: 'cancel',
-            },
-
-            {
-              text: 'Cancel reminder',
-              style: 'destructive',
-
-              onPress: async () => {
-                await goalApi.cancelReminder(
-                  goal._id
-                );
-
-                Alert.alert(
-                  'Reminder off',
-                  'You will not get a nudge for this goal.'
-                );
-              },
-            },
-          ]
-        );
-      } catch {
-        await goalApi.createReminder(
-          goal._id,
-          {
-            remindAt: tonightAt(20),
-            frequency: 'daily',
-            message:
-              `Time to work on ${goal.title}`,
-          }
-        );
-
-        Alert.alert(
-          'Reminder on',
-          'You’ll get a gentle nudge at 8:00 PM.'
-        );
-      }
-    } catch (err: any) {
-      Alert.alert(
-        'Reminder',
-        err.message ||
-          'Unable to update reminder.'
-      );
-    } finally {
-      setBusyId(null);
-    }
-  };
+  const [reminderGoalId, setReminderGoalId] = useState<string | null>(null);
+  const [reminderNotice, setReminderNotice] = useState<{ id: string; text: string } | null>(null);
 
   /* ---------------- MARK TODAY DONE ---------------- */
 
@@ -1010,6 +950,14 @@ export function GoalsOverview({
               ) : null}
 
 
+              {reminderNotice?.id === goal._id ? <Text accessibilityLiveRegion="polite" style={{ color: '#246449', marginTop: 12 }}>{reminderNotice.text}</Text> : null}
+              {reminderGoalId === goal._id ? (
+                <GoalReminderEditor goal={goal} onClose={() => setReminderGoalId(null)} onSaved={(text) => {
+                  setReminderNotice({ id: goal._id, text });
+                  setReminderGoalId(null);
+                }} />
+              ) : null}
+
               {/* ================================================= */}
               {/* ACTIONS */}
               {/* ================================================= */}
@@ -1079,18 +1027,21 @@ export function GoalsOverview({
 
 
                 <TouchableOpacity
-                  onPress={() =>
-                    toggleReminder(
-                      goal
-                    )
-                  }
+                  accessibilityRole="button"
+                  accessibilityLabel={`Reminder settings for ${goal.title}`}
+                  accessibilityState={{ expanded: reminderGoalId === goal._id }}
+                  style={styles.reminderTrigger}
+                  onPress={() => {
+                    setReminderNotice(null);
+                    setReminderGoalId(reminderGoalId === goal._id ? null : goal._id);
+                  }}
                 >
                   <Text
                     style={
                       styles.action
                     }
                   >
-                    Remind
+                    {reminderGoalId === goal._id ? 'Close reminders' : 'Remind'}
                   </Text>
                 </TouchableOpacity>
 
@@ -1740,10 +1691,21 @@ const styles = StyleSheet.create({
 
     justifyContent:
       'flex-end',
+    alignItems: 'center',
 
     gap: 11,
 
     marginTop: 8,
+  },
+
+  reminderTrigger: {
+    minHeight: 44,
+    minWidth: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: '#EAF4FA',
   },
 
   action: {
