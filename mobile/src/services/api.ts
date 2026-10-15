@@ -104,11 +104,11 @@ export async function apiFetch<T = any>(
       ? data.errors[0]?.msg
       : undefined;
 
-    throw new Error(
+    throw Object.assign(new Error(
       data.message ||
         validationMessage ||
         `Request failed (${response.status})`
-    );
+    ), { status: response.status });
   }
 
   return data as T;

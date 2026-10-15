@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { InlineGoalCalendar } from './InlineGoalCalendar';
 import { Ionicons } from '@expo/vector-icons';
 
 import {
@@ -156,58 +157,6 @@ export function GoalForm({
     }
   };
 
-  /*
-   * Convert mm/dd/yyyy to yyyy-mm-dd
-   * for the browser date input.
-   */
-  const getWebDateValue = () => {
-    const parsed = fromDisplayDate(deadline);
-
-    if (!parsed) {
-      return '';
-    }
-
-    const date = new Date(parsed);
-
-    if (Number.isNaN(date.getTime())) {
-      return '';
-    }
-
-    const year =
-      date.getFullYear();
-
-    const month = String(
-      date.getMonth() + 1
-    ).padStart(2, '0');
-
-    const day = String(
-      date.getDate()
-    ).padStart(2, '0');
-
-    return `${year}-${month}-${day}`;
-  };
-
-  /*
-   * Browser date picker result.
-   */
-  const handleWebDateChange = (
-    event: any
-  ) => {
-    const value =
-      event.target.value;
-
-    if (!value) {
-      return;
-    }
-
-    const [year, month, day] =
-      value.split('-');
-
-    setDeadline(
-      `${month}/${day}/${year}`
-    );
-  };
-
   const save = async () => {
     const isoDeadline =
       fromDisplayDate(deadline);
@@ -259,36 +208,26 @@ export function GoalForm({
       const goalId = saved.data._id;
 
       if (reminderOn) {
+        // Editing goal details must preserve a reminder's custom schedule.
+        let hasReminder = false;
         try {
-          await goalApi.getReminder(
-            goalId
-          );
-
-          await goalApi.updateReminder(
-            goalId,
-            {
-              remindAt: tonightAt(20),
-              frequency: 'daily',
-              message: `Time to work on ${payload.title}`,
-            }
-          );
-        } catch {
-          await goalApi.createReminder(
-            goalId,
-            {
-              remindAt: tonightAt(20),
-              frequency: 'daily',
-              message: `Time to work on ${payload.title}`,
-            }
-          );
+          await goalApi.getReminder(goalId);
+          hasReminder = true;
+        } catch (err: any) {
+          if (err.status !== 404) throw err;
+        }
+        if (!hasReminder) {
+          await goalApi.createReminder(goalId, {
+            remindAt: tonightAt(20),
+            frequency: 'daily',
+            message: `Time to work on ${payload.title}`,
+          });
         }
       } else if (editing?._id) {
         try {
-          await goalApi.cancelReminder(
-            goalId
-          );
-        } catch {
-          // no reminder to cancel
+          await goalApi.cancelReminder(goalId);
+        } catch (err: any) {
+          if (err.status !== 404) throw err;
         }
       }
 
@@ -375,68 +314,23 @@ export function GoalForm({
             style={styles.deadlineInput}
           />
 
-          {Platform.OS === 'web' ? (
-            /*
-             * WEB:
-             * The transparent HTML date input
-             * sits directly over the calendar icon.
-             * Clicking the icon opens the browser
-             * calendar automatically.
-             */
-            <View
-              style={styles.webCalendarButton}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={21}
-                color={GOAL_BRAND}
-              />
-
-              {React.createElement(
-                'input',
-                {
-                  type: 'date',
-                  value:
-                    getWebDateValue(),
-                  onChange:
-                    handleWebDateChange,
-                  style: {
-                    position:
-                      'absolute',
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    opacity: 0,
-                    cursor: 'pointer',
-                  },
-                }
-              )}
-            </View>
-          ) : (
-            /*
-             * ANDROID / IOS:
-             * Native calendar picker.
-             */
-            <TouchableOpacity
-              style={
-                styles.calendarButton
-              }
-              onPress={() =>
-                setShowDatePicker(true)
-              }
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name="calendar-outline"
-                size={21}
-                color={GOAL_BRAND}
-              />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity
+            accessibilityRole="button"
+            accessibilityLabel="Choose goal deadline"
+            accessibilityState={{ expanded: showDatePicker }}
+            style={styles.calendarButton}
+            onPress={() => setShowDatePicker(!showDatePicker)}
+          >
+            <Ionicons name="calendar-outline" size={21} color={GOAL_BRAND} />
+          </TouchableOpacity>
         </View>
+
+        {Platform.OS === 'web' && showDatePicker ? (
+          <InlineGoalCalendar value={deadline} onChange={(value) => {
+            setDeadline(value);
+            setShowDatePicker(false);
+          }} />
+        ) : null}
 
         {/* NATIVE DATE PICKER */}
 
@@ -445,6 +339,7 @@ export function GoalForm({
           <DateTimePicker
             value={getPickerDate()}
             mode="date"
+            minimumDate={new Date()}
             display="default"
             onChange={
               handleDateChange
@@ -481,15 +376,13 @@ export function GoalForm({
             <Text
               style={styles.reminderTitle}
             >
-              Daily reminder
+              Goal reminder
             </Text>
 
             <Text
               style={styles.reminderCopy}
             >
-              You'll get a gentle nudge at
-              8:00 PM on days this goal is
-              due.
+              New reminders start daily at 8:00 PM. Existing schedules are kept. Choose Remind on your saved goal to change the time or frequency.
             </Text>
           </View>
 
@@ -657,17 +550,6 @@ const styles = StyleSheet.create({
     width: 48,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-
-  webCalendarButton: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 48,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
   },
 
   notes: {
