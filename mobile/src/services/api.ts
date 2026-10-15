@@ -3,8 +3,17 @@ import Constants from 'expo-constants';
 import { todayStamp } from '@/constants/moods';
 import { tokenStorage } from './storage';
 
-// Set to true if you are testing on a physical phone instead of the emulator
-const IS_PHYSICAL_DEVICE = false;
+// PRODUCTION BACKEND URL Railway
+export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-fb7f.up.railway.app';
+
+const IS_PHYSICAL_DEVICE = true;
+
+
+const getBaseUrl = (): string => {
+  // Use Railway URL
+  if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
+    return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, ''); // Remove trailing slash if present
+  }
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '10.0.2.2']);
 
