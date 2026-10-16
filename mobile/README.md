@@ -1,50 +1,57 @@
-# Welcome to your Expo app 👋
+# CareCircle Mobile App 📱
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+React Native & Expo client for CareCircle, the Community Mental Health Peer-Support Network.
 
-## Get started
+---
 
-1. Install dependencies
+## 📥 Download Standalone Preview APK
+
+To test on an Android device without needing Expo Go or local developer tools:
+
+- **Direct APK Download**: [Download Latest CareCircle Preview APK](https://expo.dev/accounts/kaij789/projects/carecircle/builds/e9c369bb-cc8f-4ce4-bfaf-91562d3580b7)
+
+> **Installation Note**: When installing the `.apk` file on Android, allow installation from unknown sources in your browser settings if prompted.
+
+---
+
+## 🛠️ Local Development
+
+1. **Install dependencies**:
 
    ```bash
    npm install
    ```
 
-2. Start the app
+2. **Start the development server**:
 
    ```bash
-   npx expo start
+   npm start
    ```
 
-In the output, you'll find options to open the app in a
+3. **Run on specific devices**:
+   - **Android Emulator**: `npm run android`
+   - **iOS Simulator**: `npm run ios`
+   - **Web**: `npm run web`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+---
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 📦 Building with EAS
 
-## Get a fresh project
+To create a new standalone build via Expo Application Services:
 
-When you're ready, run:
+- **Preview Android APK**:
 
-```bash
-npm run reset-project
-```
+  ```bash
+  eas build --platform android --profile preview
+  ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+- **Production Android App Bundle (AAB for Play Store)**:
 
-## Learn more
+  ```bash
+  eas build --platform android --profile production
+  ```
 
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- **Production iOS App Store Package (IPA)**:
+  ```bash
+  eas build --platform ios --profile production
+  ```

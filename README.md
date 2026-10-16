@@ -5,17 +5,31 @@
   <h3>Community Mental Health Peer-Support Network</h3>
   <p><strong>A Digital Sanctuary for Empathy, Collective Resilience, and Accessible Mental Wellbeing</strong></p>
 
-  [![React Native](https://img.shields.io/badge/React%20Native-0.86.3-61DAFB?logo=react&logoColor=white)](https://reactnative.dev/)
-  [![Expo](https://img.shields.io/badge/Expo-~57.0.25-000020?logo=expo&logoColor=white)](https://expo.dev/)
-  [![Node.js](https://img.shields.io/badge/Node.js-Express%205-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
-  [![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose%209-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
-  [![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8.3-010101?logo=socketdotio&logoColor=white)](https://socket.io/)
-  [![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86.3-61DAFB?logo=react&logoColor=white)](https://reactnative.dev/)
+[![Expo](https://img.shields.io/badge/Expo-~57.0.25-000020?logo=expo&logoColor=white)](https://expo.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express%205-339933?logo=node.js&logoColor=white)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose%209-47A248?logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.8.3-010101?logo=socketdotio&logoColor=white)](https://socket.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Android APK](https://img.shields.io/badge/Android%20APK-Download%20Preview-brightgreen?logo=android&logoColor=white)](https://expo.dev)
+
 </div>
 
 ---
 
-## 📖 Overview
+## 📱 Mobile App (Android APK Download)
+
+You can download and install the standalone preview APK directly onto your Android device for testing without needing Expo Go or a development server.
+
+| Platform    | Build Type                  | Download Link                                                                                                                       |
+| :---------- | :-------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| **Android** | Standalone Preview (`.apk`) | [📥 **Download CareCircle APK**](https://expo.dev/accounts/kaij789/projects/carecircle/builds/e9c369bb-cc8f-4ce4-bfaf-91562d3580b7) |
+
+> [!TIP]
+> **Android Installation Note**:
+> When installing the `.apk` on your phone, if prompted with _"Install unknown apps"_, tap **Settings** and allow your browser/file manager to install. Tap **Install anyway** if Google Play Protect flags the unverified developer signature.
+
+---
 
 **CareCircle** is a community-driven mental health platform engineered to provide accessible peer support, emotional tracking, and professional resources. Unlike conventional clinical therapy, CareCircle emphasizes **collective resilience**, **shared experiences**, and **empathetic non-judgmental guidance**.
 
@@ -26,35 +40,41 @@ Designed around the **"Digital Sanctuary"** philosophy, every interaction is cra
 ## 🌟 Core Features
 
 ### 1. 🚀 Onboarding & Startup Experience
+
 - **Branded Startup Loading Screen**: Smooth, ambient loading screen featuring the CareCircle emblem, rotating circular progress indicator, and soft breathing animations in primary Serene Sky Blue (`#285F8E`).
 - **Interactive 3-Step Walkthrough**:
-  - **Slide 1**: *Connect & Share* — Highlights Peer Support Chat & Community Forum + Session Scheduling.
-  - **Slide 2**: *Awareness & Growth* — Highlights Mood & Wellbeing Tracker + Goal Setting & Progress Tracker.
-  - **Slide 3**: *Safety & Knowledge* — Highlights Resource Library & Crisis Support Directory with full-width launch action.
+  - **Slide 1**: _Connect & Share_ — Highlights Peer Support Chat & Community Forum + Session Scheduling.
+  - **Slide 2**: _Awareness & Growth_ — Highlights Mood & Wellbeing Tracker + Goal Setting & Progress Tracker.
+  - **Slide 3**: _Safety & Knowledge_ — Highlights Resource Library & Crisis Support Directory with full-width launch action.
 - **Dynamic Status Bar & Insets**: Seamless edge-to-edge support with custom safe area insets for notches, Dynamic Island, and Android status bars.
 - **Persistent State**: Automatically stores onboarding completion in local device storage, with on-demand tour access from login.
 
 ### 2. 💬 Peer Support Chat & Community Forum
+
 - **Moderated Circles**: Safe topic-based forums covering anxiety, mindfulness, depression, stress management, and daily gratitude.
 - **Real-Time Peer Chat**: Instant peer-to-peer messaging powered by Socket.IO with typing indicators and online status.
 - **Empathetic Community**: Users can create posts, comment, react, and share lived experiences safely.
 
 ### 3. 📅 Session Scheduling & 1-on-1 Guidance
+
 - **Book Peer Sessions**: Schedule structured 1-on-1 sessions with verified, qualified peer supporters.
 - **Session Reports**: Automated session summaries, feedback collection, and downloadable PDF reports via `pdfkit`.
 - **Status & Calendar Management**: Real-time session statuses (Pending, Confirmed, Completed, Cancelled) and calendar scheduling.
 
 ### 4. 🌿 Mood & Wellbeing Tracker
+
 - **Expressive Mood Check-Ins**: Daily emotional logging with 5 intuitive expressive vector faces (Terrible, Bad, Neutral, Good, Great).
 - **Trend Insights & History**: Visual representation of mood variations, streak analytics, and longitudinal emotional wellness tracking.
 - **Export & Share**: Generate shareable mood reports for personal reflection or peer supporters.
 
 ### 5. 🎯 Goal Setting & Progress Tracker
+
 - **Personalized Goals**: Set wellness targets across categories like Meditation, Walking, Journaling, and Sleep.
 - **Progress Milestones**: Visual progress rings, streak counters, and daily habit completion logs.
 - **Achievements & Badges**: Earn supportive milestones and encouraging badges as personal habits strengthen.
 
 ### 6. 📚 Resource Library & Crisis Support Directory
+
 - **Curated Mental Health Toolkits**: Expert-reviewed coping strategies, breathing audio exercises, and grounding guides for panic/anxiety.
 - **24/7 Verified Crisis Directory**: Immediate one-tap access to emergency crisis hotlines (e.g., 988 Lifeline, 1333, text lines).
 - **Offline Safety**: Crucial emergency contacts and distress guidance are always instantly accessible.
@@ -65,16 +85,16 @@ Designed around the **"Digital Sanctuary"** philosophy, every interaction is cra
 
 The UI follows the design specifications in [`DESIGN.md`](./DESIGN.md), focused on **Modern Minimalism** mixed with **Soft Tonal Layering**:
 
-| Token | Hex Value | Role & Usage |
-|---|---|---|
-| **Primary (Sky Blue)** | `#285F8E` | Brand presence, primary buttons, active tabs & pills |
-| **Secondary (Sage Green)** | `#3E6658` | Growth indicators, completion streaks, secondary buttons |
-| **Surface / Background** | `#F7FAFD` | Clean, tranquil canvas with zero harsh contrast |
-| **Card / Surface Low** | `#FFFFFF` | Elevated cards with soft ambient drop shadows |
-| **Text (Slate)** | `#181C1F` | High-legibility neutral typography |
-| **Text Secondary** | `#41474F` | Captions, subtitles, and explanatory body text |
-| **Outline / Border** | `#C1C7D0` | Subtle card dividers and input borders |
-| **Crisis Accent** | `#BA1A1A` / `#FFDAD6` | Emergency SOS indicators and urgent alerts |
+| Token                      | Hex Value             | Role & Usage                                             |
+| -------------------------- | --------------------- | -------------------------------------------------------- |
+| **Primary (Sky Blue)**     | `#285F8E`             | Brand presence, primary buttons, active tabs & pills     |
+| **Secondary (Sage Green)** | `#3E6658`             | Growth indicators, completion streaks, secondary buttons |
+| **Surface / Background**   | `#F7FAFD`             | Clean, tranquil canvas with zero harsh contrast          |
+| **Card / Surface Low**     | `#FFFFFF`             | Elevated cards with soft ambient drop shadows            |
+| **Text (Slate)**           | `#181C1F`             | High-legibility neutral typography                       |
+| **Text Secondary**         | `#41474F`             | Captions, subtitles, and explanatory body text           |
+| **Outline / Border**       | `#C1C7D0`             | Subtle card dividers and input borders                   |
+| **Crisis Accent**          | `#BA1A1A` / `#FFDAD6` | Emergency SOS indicators and urgent alerts               |
 
 - **Typography**: Public Sans / System Rounded with generous line-height (1.6x+) to prevent visual crowding.
 - **Shapes**: Rounded radii (`0.5rem` for standard elements, `1rem` for content cards, and pill shapes for badges).
@@ -84,6 +104,7 @@ The UI follows the design specifications in [`DESIGN.md`](./DESIGN.md), focused 
 ## 🏗️ Architecture & Tech Stack
 
 ### Frontend (`/mobile`)
+
 - **Framework**: React Native 0.86 with Expo SDK 57
 - **Language**: TypeScript 6.0
 - **Navigation**: React Navigation 7 (Native Stack & Bottom Tabs)
@@ -92,6 +113,7 @@ The UI follows the design specifications in [`DESIGN.md`](./DESIGN.md), focused 
 - **Real-Time**: `socket.io-client` 4.8
 
 ### Backend (`/backend`)
+
 - **Runtime**: Node.js with Express 5
 - **Database**: MongoDB with Mongoose 9 (supports MongoDB Memory Server for test isolation)
 - **Authentication**: JWT (JSON Web Tokens) with `bcryptjs` password hashing
@@ -146,6 +168,7 @@ carecircle/
 ## 🚀 Getting Started
 
 ### Prerequisites
+
 - [Node.js](https://nodejs.org/) (v18 or higher recommended)
 - [npm](https://www.npmjs.com/)
 - [Expo Go](https://expo.dev/go) app (for physical testing) or Android Studio / Xcode (for emulators)
@@ -190,6 +213,7 @@ npm start
 ```
 
 #### Run on specific platforms:
+
 - **Android Emulator**: `npm run android`
 - **iOS Simulator**: `npm run ios`
 - **Web Browser**: `npm run web`
