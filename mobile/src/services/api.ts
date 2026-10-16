@@ -61,11 +61,12 @@ const localBaseUrl = (): string => {
 const getBaseUrl = (): string => {
   // In production, or if explicitly configured to use remote backend
   if (!__DEV__ || USE_REMOTE_BACKEND) {
+    const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
+    if (configured) return productionUrl(configured);
+
     if (PRODUCTION_BACKEND_URL && PRODUCTION_BACKEND_URL.trim() !== '') {
       return PRODUCTION_BACKEND_URL.trim().replace(/\/+$/, '');
     }
-    const configured = process.env.EXPO_PUBLIC_API_URL?.trim();
-    if (configured) return productionUrl(configured);
     if (!__DEV__) {
       console.error('Set EXPO_PUBLIC_API_URL to an https:// address before shipping a production build.');
       return '';
