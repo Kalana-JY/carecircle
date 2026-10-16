@@ -7,7 +7,7 @@ import { tokenStorage } from './storage';
 export const USE_REMOTE_BACKEND = true;
 
 // PRODUCTION BACKEND URL Railway
-export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-fb7f.up.railway.app';
+export const PRODUCTION_BACKEND_URL: string = 'https://carecircle-production-f9c7.up.railway.app';
 
 // Set to false if testing on an Android Emulator, or true if testing on a physical phone over Wi-Fi
 export const IS_PHYSICAL_DEVICE = false;
