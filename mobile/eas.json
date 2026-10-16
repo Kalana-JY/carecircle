@@ -13,7 +13,7 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://carecircle-production-fb7f.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://carecircle-production-f9c7.up.railway.app"
       }
     },
     "production": {
@@ -24,7 +24,7 @@
         "simulator": false
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://carecircle-production-fb7f.up.railway.app"
+        "EXPO_PUBLIC_API_URL": "https://carecircle-production-f9c7.up.railway.app"
       }
     }
   },
